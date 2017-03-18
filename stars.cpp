@@ -15,8 +15,17 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_PARTICLES 100000
+#define NUM_PARTICLES 10000
 
+#define SECOND 1000.0f
+#define FPS 120
+#define MS_PER_FRAME (SECOND / FPS)
+#define UPDATES_PER_SECOND 120
+#define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
+
+#define COLOR_WHITE      0xFFFFFF
+#define COLOR_BLACK      0x000000
+#define COLOR_SOL_BG     0x002B36
 #define COLOR_YELLOW     0xB58900
 #define COLOR_ORANGE     0xCB4B16
 #define COLOR_RED        0xDC322F
@@ -25,13 +34,8 @@
 #define COLOR_BLUE       0x268bD2
 #define COLOR_CYAN       0x2AA198
 #define COLOR_GREEN      0x859900
-#define COLOR_BACKGROUND 0x002B36
 
-#define SECOND 1000.0f
-#define FPS 60
-#define MS_PER_FRAME (SECOND / FPS)
-#define UPDATES_PER_SECOND 120
-#define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
+#define COLOR_BACKGROUND COLOR_BLACK
 
 enum color_t
 {
@@ -253,7 +257,7 @@ void render(SDLOffscreenBuffer buffer, float dt, Particle particles[], int num_p
 }
 
 
-int main(void)
+int main(int argc, char **argv)
 {
     if (SDL_Init(SDL_INIT_VIDEO))
     {
@@ -267,6 +271,7 @@ int main(void)
             SCREEN_WIDTH,
             SCREEN_HEIGHT,
             0);
+    //SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     if (window)
     {
@@ -290,38 +295,39 @@ int main(void)
                 particles[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
                 particles[i].speed = 1;
                 particles[i].mass = 10;
+                particles[i].color = COLOR_WHITE;
 
-                enum color_t color = (color_t)(rand() % NUM_COLORS);
-                switch(color)
-                {
-                    case YELLOW:
-                        particles[i].color = COLOR_YELLOW;
-                        break;
-                    case ORANGE:
-                        particles[i].color = COLOR_ORANGE;
-                        break;
-                    case RED:
-                        particles[i].color = COLOR_RED;
-                        break;
-                    case MAGENTA:
-                        particles[i].color = COLOR_MAGENTA;
-                        break;
-                    case VIOLET:
-                        particles[i].color = COLOR_VIOLET;
-                        break;
-                    case BLUE:
-                        particles[i].color = COLOR_BLUE;
-                        break;
-                    case CYAN:
-                        particles[i].color = COLOR_CYAN;
-                        break;
-                    case GREEN:
-                        particles[i].color = COLOR_GREEN;
-                        break;
-                    default:
-                        particles[i].color = 0xFFFFFF;
-                        break;
-                }
+                //enum color_t color = (color_t)(rand() % NUM_COLORS);
+                //switch(color)
+                //{
+                //    case YELLOW:
+                //        particles[i].color = COLOR_YELLOW;
+                //        break;
+                //    case ORANGE:
+                //        particles[i].color = COLOR_ORANGE;
+                //        break;
+                //    case RED:
+                //        particles[i].color = COLOR_RED;
+                //        break;
+                //    case MAGENTA:
+                //        particles[i].color = COLOR_MAGENTA;
+                //        break;
+                //    case VIOLET:
+                //        particles[i].color = COLOR_VIOLET;
+                //        break;
+                //    case BLUE:
+                //        particles[i].color = COLOR_BLUE;
+                //        break;
+                //    case CYAN:
+                //        particles[i].color = COLOR_CYAN;
+                //        break;
+                //    case GREEN:
+                //        particles[i].color = COLOR_GREEN;
+                //        break;
+                //    default:
+                //        particles[i].color = COLOR_WHITE;
+                //        break;
+                //}
                 //printf("%f, %f, %f, %f, %f\n", particles[i].angle, sinf(particles[i].angle), cosf(particles[i].angle), particles[i].speed, particles[i].mass);
             }
 
@@ -332,9 +338,9 @@ int main(void)
                 uint64_t elapsed_ms = current_ms - previous_ms;
                 previous_ms = current_ms;
                 lag += elapsed_ms;
-                printf("Lag: %d\n", lag);
+                //printf("Lag: %d\n", lag);
 
-                printf("%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
+                //printf("%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                 SDL_Event event;
 
                 while (SDL_PollEvent(&event))
@@ -349,7 +355,7 @@ int main(void)
                 while (lag >= MS_PER_UPDATE)
                 {
                     update(particles, NUM_PARTICLES, &dimension);
-                    printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
+                    //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
                 render(global_back_buffer, lag/SECOND, particles, NUM_PARTICLES);
