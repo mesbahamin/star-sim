@@ -15,7 +15,17 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_PARTICLES 1
+#define NUM_PARTICLES 100000
+
+#define COLOR_YELLOW     0xB58900
+#define COLOR_ORANGE     0xCB4B16
+#define COLOR_RED        0xDC322F
+#define COLOR_MAGENTA    0xD33682
+#define COLOR_VIOLET     0x6C71C4
+#define COLOR_BLUE       0x268bD2
+#define COLOR_CYAN       0x2AA198
+#define COLOR_GREEN      0x859900
+#define COLOR_BACKGROUND 0x002B36
 
 #define SECOND 1000.0f
 #define FPS 60
@@ -23,6 +33,18 @@
 #define UPDATES_PER_SECOND 120
 #define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
 
+enum color_t
+{
+    YELLOW,
+    ORANGE,
+    RED,
+    MAGENTA,
+    VIOLET,
+    BLUE,
+    CYAN,
+    GREEN,
+    NUM_COLORS,
+};
 
 struct SDLOffscreenBuffer
 {
@@ -45,8 +67,8 @@ struct Particle
     float angle;
     float speed;
     float mass;
-    uint16_t x;
-    uint16_t y;
+    double x;
+    double y;
     uint32_t color;
 };
 
@@ -156,7 +178,7 @@ bool handle_event(SDL_Event *event)
 
 
 // TODO: change buffer to a pointer
-void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint8_t intensity)
+void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color)
 {
     /* Origin is (0, 0) on the upper left.
      * To go one pixel right, increment by 32 bits.
@@ -167,12 +189,12 @@ void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint8_t intens
         uint8_t *pixel_pos = (uint8_t *)buffer.memory;
         pixel_pos += ((BYTES_PER_PIXEL*x) + (buffer.pitch * y));
         uint32_t *pixel = (uint32_t *)pixel_pos;
-        *pixel = (intensity << 16) | (intensity << 8) | (intensity);
+        *pixel = color;
     }
 }
 
 // TODO: change buffer to a pointer
-void clear_screen(SDLOffscreenBuffer buffer)
+void clear_screen(SDLOffscreenBuffer buffer, uint32_t color)
 {
     uint8_t *row = (uint8_t *)buffer.memory;
 
@@ -183,27 +205,50 @@ void clear_screen(SDLOffscreenBuffer buffer)
         for (int x = 0; x < buffer.width; ++x)
         {
 
-            *pixel++ = 0x00000000;
+            *pixel++ = color;
         }
 
         row += buffer.pitch;
     }
 }
 
-void update(Particle particles[], int num_particles)
+void update(Particle particles[], int num_particles, SDLWindowDimension* dimension)
 {
     for (int i = 0; i < num_particles; ++i)
     {
-        particles[i].x += sin(particles[i].angle) * particles[i].speed;
-        particles[i].y += cos(particles[i].angle) * particles[i].speed;
+        particles[i].x += sinf(particles[i].angle) * particles[i].speed;
+        particles[i].y += cosf(particles[i].angle) * particles[i].speed;
+
+        if (particles[i].x > dimension->width)
+        {
+            particles[i].x = 0;
+        }
+        else if (particles[i].x < 0)
+        {
+            particles[i].x = dimension->width;
+        }
+
+        if (particles[i].y > dimension->height)
+        {
+            particles[i].y = 0;
+        }
+        else if (particles[i].y < 0)
+        {
+            particles[i].y = dimension->height;
+        }
     }
 }
 
 void render(SDLOffscreenBuffer buffer, float dt, Particle particles[], int num_particles)
 {
+    //printf("%f\n", dt);
     for (int i = 0; i < num_particles; ++i)
     {
-        set_pixel(buffer, particles[i].x, particles[i].y, 255);
+        set_pixel(
+            buffer,
+            particles[i].x + (sinf(particles[i].angle) * particles[i].speed) * dt,
+            particles[i].y + (cosf(particles[i].angle) * particles[i].speed) * dt,
+            particles[i].color);
     }
 }
 
@@ -233,28 +278,61 @@ int main(void)
             sdl_resize_texture(&global_back_buffer, renderer, dimension.width, dimension.height);
 
             bool running = true;
+            srand((uint32_t)time(NULL));
 
             uint64_t lag = 0;
             uint64_t previous_ms = get_current_time_ms();
             Particle particles[NUM_PARTICLES];
             for (int i = 0; i < NUM_PARTICLES; ++i)
             {
-                particles[i].x = 50;
-                particles[i].y = 50;
-                particles[i].mass = 10;
+                particles[i].x = rand() % dimension.width;
+                particles[i].y = rand() % dimension.height;
+                particles[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
                 particles[i].speed = 1;
-                particles[i].angle = 0;
-                particles[i].color = 0xFFFFFF;
+                particles[i].mass = 10;
+
+                enum color_t color = (color_t)(rand() % NUM_COLORS);
+                switch(color)
+                {
+                    case YELLOW:
+                        particles[i].color = COLOR_YELLOW;
+                        break;
+                    case ORANGE:
+                        particles[i].color = COLOR_ORANGE;
+                        break;
+                    case RED:
+                        particles[i].color = COLOR_RED;
+                        break;
+                    case MAGENTA:
+                        particles[i].color = COLOR_MAGENTA;
+                        break;
+                    case VIOLET:
+                        particles[i].color = COLOR_VIOLET;
+                        break;
+                    case BLUE:
+                        particles[i].color = COLOR_BLUE;
+                        break;
+                    case CYAN:
+                        particles[i].color = COLOR_CYAN;
+                        break;
+                    case GREEN:
+                        particles[i].color = COLOR_GREEN;
+                        break;
+                    default:
+                        particles[i].color = 0xFFFFFF;
+                        break;
+                }
+                //printf("%f, %f, %f, %f, %f\n", particles[i].angle, sinf(particles[i].angle), cosf(particles[i].angle), particles[i].speed, particles[i].mass);
             }
 
             while (running)
             {
-                clear_screen(global_back_buffer);
+                clear_screen(global_back_buffer, COLOR_BACKGROUND);
                 uint64_t current_ms = get_current_time_ms();
                 uint64_t elapsed_ms = current_ms - previous_ms;
                 previous_ms = current_ms;
                 lag += elapsed_ms;
-                //printf("Lag: %d\n", lag);
+                printf("Lag: %d\n", lag);
 
                 printf("%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                 SDL_Event event;
@@ -270,11 +348,11 @@ int main(void)
 
                 while (lag >= MS_PER_UPDATE)
                 {
-                    update(particles, NUM_PARTICLES);
+                    update(particles, NUM_PARTICLES, &dimension);
                     printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
-                render(global_back_buffer, lag, particles, NUM_PARTICLES);
+                render(global_back_buffer, lag/SECOND, particles, NUM_PARTICLES);
                 sdl_update_window(window, renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
