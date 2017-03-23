@@ -14,7 +14,7 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_PARTICLES 10000
+#define NUM_STARS 10000
 
 #define SECOND 1000.0f
 #define FPS 60
@@ -33,7 +33,6 @@
 #define COLOR_BLUE       0x268bD2
 #define COLOR_CYAN       0x2AA198
 #define COLOR_GREEN      0x859900
-
 #define COLOR_BACKGROUND COLOR_BLACK
 
 enum color_t
@@ -65,7 +64,7 @@ struct SDLWindowDimension
     int height;
 };
 
-struct Particle
+struct Star
 {
     float angle;
     float speed;
@@ -190,43 +189,44 @@ void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
     memset(buffer.memory, pixel_value, buffer.height * buffer.width * BYTES_PER_PIXEL);
 }
 
-void update(Particle particles[], int num_particles, SDLWindowDimension* dimension)
+
+void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
 {
-    for (int i = 0; i < num_particles; ++i)
+    for (int i = 0; i < num_stars; ++i)
     {
-        particles[i].x += sinf(particles[i].angle) * particles[i].speed;
-        particles[i].y += cosf(particles[i].angle) * particles[i].speed;
+        stars[i].x += sinf(stars[i].angle) * stars[i].speed;
+        stars[i].y += cosf(stars[i].angle) * stars[i].speed;
 
-        if (particles[i].x > dimension->width)
+        if (stars[i].x > dimension->width)
         {
-            particles[i].x = 0;
+            stars[i].x = 0;
         }
-        else if (particles[i].x < 0)
+        else if (stars[i].x < 0)
         {
-            particles[i].x = dimension->width;
+            stars[i].x = dimension->width;
         }
 
-        if (particles[i].y > dimension->height)
+        if (stars[i].y > dimension->height)
         {
-            particles[i].y = 0;
+            stars[i].y = 0;
         }
-        else if (particles[i].y < 0)
+        else if (stars[i].y < 0)
         {
-            particles[i].y = dimension->height;
+            stars[i].y = dimension->height;
         }
     }
 }
 
-void render(SDLOffscreenBuffer buffer, float dt, Particle particles[], int num_particles)
+void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars)
 {
     //printf("%f\n", dt);
-    for (int i = 0; i < num_particles; ++i)
+    for (int i = 0; i < num_stars; ++i)
     {
         set_pixel(
             buffer,
-            particles[i].x + (sinf(particles[i].angle) * particles[i].speed) * dt,
-            particles[i].y + (cosf(particles[i].angle) * particles[i].speed) * dt,
-            particles[i].color);
+            stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
+            stars[i].y + (cosf(stars[i].angle) * stars[i].speed) * dt,
+            stars[i].color);
     }
 }
 
@@ -261,48 +261,48 @@ int main(int argc, char **argv)
 
             uint64_t lag = 0;
             uint64_t previous_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();
-            Particle particles[NUM_PARTICLES];
-            for (int i = 0; i < NUM_PARTICLES; ++i)
+            Star stars[NUM_STARS];
+            for (int i = 0; i < NUM_STARS; ++i)
             {
-                particles[i].x = rand() % dimension.width;
-                particles[i].y = rand() % dimension.height;
-                particles[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
-                particles[i].speed = 0.1;
-                particles[i].mass = 10;
-                particles[i].color = COLOR_WHITE;
+                stars[i].x = rand() % dimension.width;
+                stars[i].y = rand() % dimension.height;
+                stars[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
+                stars[i].speed = 0.1;
+                stars[i].mass = 10;
+                stars[i].color = COLOR_WHITE;
 
                 //enum color_t color = (color_t)(rand() % NUM_COLORS);
                 //switch(color)
                 //{
                 //    case YELLOW:
-                //        particles[i].color = COLOR_YELLOW;
+                //        stars[i].color = COLOR_YELLOW;
                 //        break;
                 //    case ORANGE:
-                //        particles[i].color = COLOR_ORANGE;
+                //        stars[i].color = COLOR_ORANGE;
                 //        break;
                 //    case RED:
-                //        particles[i].color = COLOR_RED;
+                //        stars[i].color = COLOR_RED;
                 //        break;
                 //    case MAGENTA:
-                //        particles[i].color = COLOR_MAGENTA;
+                //        stars[i].color = COLOR_MAGENTA;
                 //        break;
                 //    case VIOLET:
-                //        particles[i].color = COLOR_VIOLET;
+                //        stars[i].color = COLOR_VIOLET;
                 //        break;
                 //    case BLUE:
-                //        particles[i].color = COLOR_BLUE;
+                //        stars[i].color = COLOR_BLUE;
                 //        break;
                 //    case CYAN:
-                //        particles[i].color = COLOR_CYAN;
+                //        stars[i].color = COLOR_CYAN;
                 //        break;
                 //    case GREEN:
-                //        particles[i].color = COLOR_GREEN;
+                //        stars[i].color = COLOR_GREEN;
                 //        break;
                 //    default:
-                //        particles[i].color = COLOR_WHITE;
+                //        stars[i].color = COLOR_WHITE;
                 //        break;
                 //}
-                //printf("%f, %f, %f, %f, %f\n", particles[i].angle, sinf(particles[i].angle), cosf(particles[i].angle), particles[i].speed, particles[i].mass);
+                //printf("%f, %f, %f, %f, %f\n", stars[i].angle, sinf(stars[i].angle), cosf(stars[i].angle), stars[i].speed, stars[i].mass);
             }
 
             while (running)
@@ -327,12 +327,12 @@ int main(int argc, char **argv)
 
                 while (lag >= MS_PER_UPDATE)
                 {
-                    update(particles, NUM_PARTICLES, &dimension);
+                    update(stars, NUM_STARS, &dimension);
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
                 clear_screen(global_back_buffer, COLOR_BACKGROUND);
-                render(global_back_buffer, lag/SECOND, particles, NUM_PARTICLES);
+                render(global_back_buffer, lag/SECOND, stars, NUM_STARS);
                 sdl_update_window(window, renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
