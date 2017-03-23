@@ -3,9 +3,8 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <sys/mman.h>
+#include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -18,7 +17,7 @@
 #define NUM_PARTICLES 10000
 
 #define SECOND 1000.0f
-#define FPS 120
+#define FPS 60
 #define MS_PER_FRAME (SECOND / FPS)
 #define UPDATES_PER_SECOND 120
 #define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
@@ -78,15 +77,6 @@ struct Particle
 
 static SDLOffscreenBuffer global_back_buffer;
 
-uint64_t get_current_time_ms(void)
-{
-    struct timespec current;
-    // TODO(amin): Fallback to other time sources when CLOCK_MONOTONIC is unavailable.
-    clock_gettime(CLOCK_MONOTONIC, &current);
-    uint64_t milliseconds = ((current.tv_sec * 1000000000) + current.tv_nsec) / 1000000;
-    return milliseconds;
-}
-
 
 SDLWindowDimension sdl_get_window_dimension(SDL_Window *window)
 {
@@ -100,7 +90,7 @@ void sdl_resize_texture(SDLOffscreenBuffer *buffer, SDL_Renderer *renderer, int 
 {
     if (buffer->memory)
     {
-        munmap(buffer->memory, buffer->width * buffer->height * BYTES_PER_PIXEL);
+        free(buffer->memory);
     }
 
     if (buffer->texture)
@@ -118,12 +108,7 @@ void sdl_resize_texture(SDLOffscreenBuffer *buffer, SDL_Renderer *renderer, int 
     buffer->height = height;
     buffer->pitch = width * BYTES_PER_PIXEL;
 
-    buffer->memory = mmap(
-            0,
-            width * height * BYTES_PER_PIXEL,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANONYMOUS,
-            -1, 0);
+    buffer->memory = malloc(width * height * BYTES_PER_PIXEL);
 }
 
 
@@ -198,22 +183,11 @@ void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color
 }
 
 // TODO: change buffer to a pointer
-void clear_screen(SDLOffscreenBuffer buffer, uint32_t color)
+void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
 {
-    uint8_t *row = (uint8_t *)buffer.memory;
-
-    for (int y = 0; y < buffer.height; ++y)
-    {
-        uint32_t *pixel = (uint32_t *)row;
-
-        for (int x = 0; x < buffer.width; ++x)
-        {
-
-            *pixel++ = color;
-        }
-
-        row += buffer.pitch;
-    }
+    // NOTE(amin): Memset is faster than nested for loops, but can only set
+    // pixels to single byte values
+    memset(buffer.memory, pixel_value, buffer.height * buffer.width * BYTES_PER_PIXEL);
 }
 
 void update(Particle particles[], int num_particles, SDLWindowDimension* dimension)
@@ -270,7 +244,7 @@ int main(int argc, char **argv)
             SDL_WINDOWPOS_UNDEFINED,
             SCREEN_WIDTH,
             SCREEN_HEIGHT,
-            0);
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     //SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     if (window)
@@ -286,14 +260,14 @@ int main(int argc, char **argv)
             srand((uint32_t)time(NULL));
 
             uint64_t lag = 0;
-            uint64_t previous_ms = get_current_time_ms();
+            uint64_t previous_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();
             Particle particles[NUM_PARTICLES];
             for (int i = 0; i < NUM_PARTICLES; ++i)
             {
                 particles[i].x = rand() % dimension.width;
                 particles[i].y = rand() % dimension.height;
                 particles[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
-                particles[i].speed = 1;
+                particles[i].speed = 0.1;
                 particles[i].mass = 10;
                 particles[i].color = COLOR_WHITE;
 
@@ -333,14 +307,13 @@ int main(int argc, char **argv)
 
             while (running)
             {
-                clear_screen(global_back_buffer, COLOR_BACKGROUND);
-                uint64_t current_ms = get_current_time_ms();
+                uint64_t current_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();
                 uint64_t elapsed_ms = current_ms - previous_ms;
                 previous_ms = current_ms;
                 lag += elapsed_ms;
                 //printf("Lag: %d\n", lag);
-
                 //printf("%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
+
                 SDL_Event event;
 
                 while (SDL_PollEvent(&event))
@@ -358,11 +331,12 @@ int main(int argc, char **argv)
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
+                clear_screen(global_back_buffer, COLOR_BACKGROUND);
                 render(global_back_buffer, lag/SECOND, particles, NUM_PARTICLES);
                 sdl_update_window(window, renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
-                    usleep((MS_PER_FRAME - elapsed_ms) * SECOND);
+                    SDL_Delay(MS_PER_FRAME - elapsed_ms);
                 }
             }
         }
