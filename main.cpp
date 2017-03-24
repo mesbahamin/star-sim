@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include "star.h"
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -14,7 +15,8 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_STARS 10000
+#define NUM_STARS 200
+#define DRAG 0.9999
 
 #define SECOND 1000.0f
 #define FPS 60
@@ -64,15 +66,6 @@ struct SDLWindowDimension
     int height;
 };
 
-struct Star
-{
-    float angle;
-    float speed;
-    float mass;
-    double x;
-    double y;
-    uint32_t color;
-};
 
 static SDLOffscreenBuffer global_back_buffer;
 
@@ -194,9 +187,15 @@ void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
 {
     for (int i = 0; i < num_stars; ++i)
     {
+        for (int j = i + 1; j < num_stars; ++j)
+        {
+            star_attract(&stars[i], &stars[j]);
+        }
         stars[i].x += sinf(stars[i].angle) * stars[i].speed;
-        stars[i].y += cosf(stars[i].angle) * stars[i].speed;
+        stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
+        //printf("%d: (%f, %f)\n", i, stars[i].x, stars[i].y);
 
+        stars[i].speed *= DRAG;
         if (stars[i].x > dimension->width)
         {
             stars[i].x = 0;
@@ -268,7 +267,8 @@ int main(int argc, char **argv)
                 stars[i].y = rand() % dimension.height;
                 stars[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
                 stars[i].speed = 0.1;
-                stars[i].mass = 10;
+                stars[i].mass = 1;
+                stars[i].size = star_calc_size(stars[i].mass);
                 stars[i].color = COLOR_WHITE;
 
                 //enum color_t color = (color_t)(rand() % NUM_COLORS);

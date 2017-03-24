@@ -1,7 +1,7 @@
 build:
-	g++ -std=c++11 -Wall -Wextra -g stars.cpp -o stars `sdl2-config --cflags --libs`
+	g++ -std=c++11 -Wall -Wextra -g main.cpp -o star-garden `sdl2-config --cflags --libs`
 
 run:
-	./stars
+	./star-garden
 
 test: build run
