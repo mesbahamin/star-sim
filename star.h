@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define GRAVITATION 0.1f
+#define GRAVITATION 0.01f
 
 struct Star
 {
@@ -12,8 +12,8 @@ struct Star
     float speed;
     float mass;
     float size;
-    double x;
-    double y;
+    float x;
+    float y;
     uint32_t color;
 };
 
@@ -59,6 +59,7 @@ void star_attract(Star *s1, Star *s2)
         float force = GRAVITATION * (s1->mass * s2->mass / powf(distance, 2));
         star_accelerate(s1, theta - (0.5 * M_PI), force / s1->mass);
         star_accelerate(s2, theta + (0.5 * M_PI), force / s2->mass);
+        //printf("%f\n", force);
     }
 }
 #endif

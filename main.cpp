@@ -11,12 +11,16 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
+#define TRAILS
+//#define TOROID
+#define FULLSCREEN
+
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
 #define NUM_STARS 200
-#define DRAG 0.9999
+#define DRAG 1
 
 #define SECOND 1000.0f
 #define FPS 60
@@ -196,6 +200,7 @@ void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
         //printf("%d: (%f, %f)\n", i, stars[i].x, stars[i].y);
 
         stars[i].speed *= DRAG;
+#ifdef TOROID
         if (stars[i].x > dimension->width)
         {
             stars[i].x = 0;
@@ -213,6 +218,8 @@ void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
         {
             stars[i].y = dimension->height;
         }
+#endif
+        //printf("%f, %f\n", stars[i].x, stars[i].y);
     }
 }
 
@@ -224,7 +231,7 @@ void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars)
         set_pixel(
             buffer,
             stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-            stars[i].y + (cosf(stars[i].angle) * stars[i].speed) * dt,
+            stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
             stars[i].color);
     }
 }
@@ -244,7 +251,10 @@ int main(int argc, char **argv)
             SCREEN_WIDTH,
             SCREEN_HEIGHT,
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    //SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+
+#ifdef FULLSCREEN
+    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+#endif
 
     if (window)
     {
@@ -266,8 +276,8 @@ int main(int argc, char **argv)
                 stars[i].x = rand() % dimension.width;
                 stars[i].y = rand() % dimension.height;
                 stars[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
-                stars[i].speed = 0.1;
-                stars[i].mass = 1;
+                stars[i].speed = 0;
+                stars[i].mass = 5;
                 stars[i].size = star_calc_size(stars[i].mass);
                 stars[i].color = COLOR_WHITE;
 
@@ -302,7 +312,7 @@ int main(int argc, char **argv)
                 //        stars[i].color = COLOR_WHITE;
                 //        break;
                 //}
-                //printf("%f, %f, %f, %f, %f\n", stars[i].angle, sinf(stars[i].angle), cosf(stars[i].angle), stars[i].speed, stars[i].mass);
+                //printf("%f, %f, %f\n", stars[i].angle, stars[i].speed, stars[i].mass);
             }
 
             while (running)
@@ -311,8 +321,7 @@ int main(int argc, char **argv)
                 uint64_t elapsed_ms = current_ms - previous_ms;
                 previous_ms = current_ms;
                 lag += elapsed_ms;
-                //printf("Lag: %d\n", lag);
-                //printf("%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
+                //printf("%" PRIu64 ", %" PRIu64 ", %f\n", elapsed_ms, lag, MS_PER_UPDATE);
 
                 SDL_Event event;
 
@@ -331,7 +340,9 @@ int main(int argc, char **argv)
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
+#ifndef TRAILS
                 clear_screen(global_back_buffer, COLOR_BACKGROUND);
+#endif
                 render(global_back_buffer, lag/SECOND, stars, NUM_STARS);
                 sdl_update_window(window, renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
