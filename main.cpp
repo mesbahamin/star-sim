@@ -11,7 +11,7 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
-#define TRAILS
+//#define TRAILS
 //#define TOROID
 #define FULLSCREEN
 
@@ -20,7 +20,7 @@
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
 #define NUM_STARS 200
-#define DRAG 1
+#define DRAG 0.994
 
 #define SECOND 1000.0f
 #define FPS 60

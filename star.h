@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define GRAVITATION 0.01f
+#define GRAVITATION 0.1f
 
 struct Star
 {
