@@ -6,21 +6,21 @@
 #include <string.h>
 #include <time.h>
 #include "star.h"
+#include "barnes_hut.h"
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
 //#define TRAILS
-//#define TOROID
 #define FULLSCREEN
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_STARS 200
-#define DRAG 0.994
+#define NUM_STARS 100
+#define DRAG 1
 
 #define SECOND 1000.0f
 #define FPS 60
@@ -178,6 +178,7 @@ void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color
     }
 }
 
+
 // TODO: change buffer to a pointer
 void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
 {
@@ -187,7 +188,7 @@ void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
 }
 
 
-void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
+void update(Star stars[], int num_stars, QuadTreeNode *cells_root, SDLWindowDimension* dimension)
 {
     for (int i = 0; i < num_stars; ++i)
     {
@@ -200,30 +201,50 @@ void update(Star stars[], int num_stars, SDLWindowDimension* dimension)
         //printf("%d: (%f, %f)\n", i, stars[i].x, stars[i].y);
 
         stars[i].speed *= DRAG;
-#ifdef TOROID
-        if (stars[i].x > dimension->width)
-        {
-            stars[i].x = 0;
-        }
-        else if (stars[i].x < 0)
-        {
-            stars[i].x = dimension->width;
-        }
-
-        if (stars[i].y > dimension->height)
-        {
-            stars[i].y = 0;
-        }
-        else if (stars[i].y < 0)
-        {
-            stars[i].y = dimension->height;
-        }
-#endif
         //printf("%f, %f\n", stars[i].x, stars[i].y);
+    }
+
+    int center_x = global_back_buffer.width / 2;
+    int center_y = global_back_buffer.height / 2;
+    int dist_x = global_back_buffer.width / 2;
+    int dist_y = global_back_buffer.height / 2;
+
+    quad_tree_node_free(cells_root);
+    cells_root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
+    quad_tree_node_subdivide(cells_root, stars, num_stars);
+}
+
+// TODO: pass a pointer to buffer?
+void draw_grid(SDLOffscreenBuffer buffer, QuadTreeNode *node, uint32_t color)
+{
+    if (node)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (node->children[i])
+            {
+                for (
+                    int x = (node->cell->center_x - node->cell->distance_x);
+                    x <= (node->cell->center_x + node->cell->distance_x);
+                    ++x)
+                {
+                    set_pixel(buffer, x, node->cell->center_y, color);
+                }
+
+                for (
+                    int y = (node->cell->center_y - node->cell->distance_y);
+                    y <= (node->cell->center_y + node->cell->distance_y);
+                    ++y)
+                {
+                    set_pixel(buffer, node->cell->center_x, y, color);
+                }
+                draw_grid(buffer, node->children[i], color);
+            }
+        }
     }
 }
 
-void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars)
+void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars, QuadTreeNode *cells_root)
 {
     //printf("%f\n", dt);
     for (int i = 0; i < num_stars; ++i)
@@ -234,6 +255,8 @@ void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars)
             stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
             stars[i].color);
     }
+
+    draw_grid(buffer, cells_root, COLOR_GREEN);
 }
 
 
@@ -280,40 +303,14 @@ int main(int argc, char **argv)
                 stars[i].mass = 5;
                 stars[i].size = star_calc_size(stars[i].mass);
                 stars[i].color = COLOR_WHITE;
-
-                //enum color_t color = (color_t)(rand() % NUM_COLORS);
-                //switch(color)
-                //{
-                //    case YELLOW:
-                //        stars[i].color = COLOR_YELLOW;
-                //        break;
-                //    case ORANGE:
-                //        stars[i].color = COLOR_ORANGE;
-                //        break;
-                //    case RED:
-                //        stars[i].color = COLOR_RED;
-                //        break;
-                //    case MAGENTA:
-                //        stars[i].color = COLOR_MAGENTA;
-                //        break;
-                //    case VIOLET:
-                //        stars[i].color = COLOR_VIOLET;
-                //        break;
-                //    case BLUE:
-                //        stars[i].color = COLOR_BLUE;
-                //        break;
-                //    case CYAN:
-                //        stars[i].color = COLOR_CYAN;
-                //        break;
-                //    case GREEN:
-                //        stars[i].color = COLOR_GREEN;
-                //        break;
-                //    default:
-                //        stars[i].color = COLOR_WHITE;
-                //        break;
-                //}
                 //printf("%f, %f, %f\n", stars[i].angle, stars[i].speed, stars[i].mass);
             }
+
+            QuadTreeNode *cells_root = quad_tree_node_init(
+                global_back_buffer.width / 2,
+                global_back_buffer.height / 2,
+                global_back_buffer.width / 2,
+                global_back_buffer.height / 2);
 
             while (running)
             {
@@ -336,14 +333,14 @@ int main(int argc, char **argv)
 
                 while (lag >= MS_PER_UPDATE)
                 {
-                    update(stars, NUM_STARS, &dimension);
+                    update(stars, NUM_STARS, cells_root, &dimension);
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
 #ifndef TRAILS
                 clear_screen(global_back_buffer, COLOR_BACKGROUND);
 #endif
-                render(global_back_buffer, lag/SECOND, stars, NUM_STARS);
+                render(global_back_buffer, lag/SECOND, stars, NUM_STARS, cells_root);
                 sdl_update_window(window, renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
