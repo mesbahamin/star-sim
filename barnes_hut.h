@@ -19,14 +19,14 @@ struct Cell
 
 struct QuadTreeNode
 {
-    Cell *cell;
-    QuadTreeNode *children[4];
+    struct Cell *cell;
+    struct QuadTreeNode *children[4];
 };
 
 
-Cell* cell_init(float center_x, float center_y, float distance_x, float distance_y)
+struct Cell* cell_init(float center_x, float center_y, float distance_x, float distance_y)
 {
-    Cell *cell = (Cell*)malloc(sizeof(Cell));
+    struct Cell *cell = (struct Cell*)malloc(sizeof(struct Cell));
     if (cell)
     {
         cell->center_x = center_x;
@@ -37,7 +37,7 @@ Cell* cell_init(float center_x, float center_y, float distance_x, float distance
     return cell;
 }
 
-int cell_count_stars_contained(Cell *c, Star stars[], int num_stars)
+int cell_count_stars_contained(struct Cell *c, struct Star stars[], int num_stars)
 {
     int count = 0;
     for (int i = 0; i < num_stars; ++i)
@@ -53,21 +53,21 @@ int cell_count_stars_contained(Cell *c, Star stars[], int num_stars)
     return count;
 }
 
-QuadTreeNode* quad_tree_node_init(float center_x, float center_y, float distance_x, float distance_y)
+struct QuadTreeNode* quad_tree_node_init(float center_x, float center_y, float distance_x, float distance_y)
 {
-    QuadTreeNode *node = (QuadTreeNode*)malloc(sizeof(QuadTreeNode));
+    struct QuadTreeNode *node = (struct QuadTreeNode*)malloc(sizeof(struct QuadTreeNode));
     if (node)
     {
         node->cell = cell_init(center_x, center_y, distance_x, distance_y);
         for (int i = 0; i < 4; ++i)
         {
-            node->children[i] = nullptr;
+            node->children[i] = 0;
         }
     }
     return node;
 }
 
-void quad_tree_node_free(QuadTreeNode *node)
+void quad_tree_node_free(struct QuadTreeNode *node)
 {
     if (node)
     {
@@ -83,7 +83,7 @@ void quad_tree_node_free(QuadTreeNode *node)
     }
 }
 
-void quad_tree_node_subdivide(QuadTreeNode *node, Star stars[], int num_stars)
+void quad_tree_node_subdivide(struct QuadTreeNode *node, struct Star stars[], int num_stars)
 {
     if (cell_count_stars_contained(node->cell, stars, num_stars) > MAX_STARS_PER_CELL)
     {

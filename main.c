@@ -1,6 +1,7 @@
-#include <cmath>
+#include <math.h>
 #include <inttypes.h>
 #include <SDL.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -12,8 +13,12 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
+#ifndef M_PI
+#define M_PI (3.14159265358979323846264338327950288)
+#endif
+
 //#define TRAILS
-#define FULLSCREEN
+//#define FULLSCREEN
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
@@ -41,7 +46,7 @@
 #define COLOR_GREEN      0x859900
 #define COLOR_BACKGROUND COLOR_BLACK
 
-enum color_t
+typedef enum color_t
 {
     YELLOW,
     ORANGE,
@@ -52,16 +57,16 @@ enum color_t
     CYAN,
     GREEN,
     NUM_COLORS,
-};
+} color_t;
 
 struct SDLOffscreenBuffer
 {
     // NOTE(amin): pixels are always 32-bits wide. Memory order: BB GG RR XX.
     SDL_Texture *texture;
     void *memory;
-    int width;
-    int height;
-    int pitch;
+    unsigned int width;
+    unsigned int height;
+    unsigned int pitch;
 };
 
 struct SDLWindowDimension
@@ -71,18 +76,18 @@ struct SDLWindowDimension
 };
 
 
-static SDLOffscreenBuffer global_back_buffer;
+static struct SDLOffscreenBuffer global_back_buffer;
 
 
-SDLWindowDimension sdl_get_window_dimension(SDL_Window *window)
+struct SDLWindowDimension sdl_get_window_dimension(SDL_Window *window)
 {
-    SDLWindowDimension result;
+    struct SDLWindowDimension result;
     SDL_GetWindowSize(window, &result.width, &result.height);
     return(result);
 }
 
 
-void sdl_resize_texture(SDLOffscreenBuffer *buffer, SDL_Renderer *renderer, int width, int height)
+void sdl_resize_texture(struct SDLOffscreenBuffer *buffer, SDL_Renderer *renderer, int width, int height)
 {
     if (buffer->memory)
     {
@@ -108,7 +113,7 @@ void sdl_resize_texture(SDLOffscreenBuffer *buffer, SDL_Renderer *renderer, int 
 }
 
 
-void sdl_update_window(SDL_Window *window, SDL_Renderer *renderer, SDLOffscreenBuffer buffer)
+void sdl_update_window(SDL_Renderer *renderer, struct SDLOffscreenBuffer buffer)
 {
     if (SDL_UpdateTexture(buffer.texture, 0, buffer.memory, buffer.pitch))
     {
@@ -153,7 +158,7 @@ bool handle_event(SDL_Event *event)
                 {
                     SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);
                     SDL_Renderer *renderer = SDL_GetRenderer(window);
-                    sdl_update_window(window, renderer, global_back_buffer);
+                    sdl_update_window(renderer, global_back_buffer);
                 } break;
             }
         } break;
@@ -163,7 +168,7 @@ bool handle_event(SDL_Event *event)
 
 
 // TODO: change buffer to a pointer
-void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color)
+void set_pixel(struct SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color)
 {
     /* Origin is (0, 0) on the upper left.
      * To go one pixel right, increment by 32 bits.
@@ -180,7 +185,7 @@ void set_pixel(SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color
 
 
 // TODO: change buffer to a pointer
-void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
+void clear_screen(struct SDLOffscreenBuffer buffer, uint32_t pixel_value)
 {
     // NOTE(amin): Memset is faster than nested for loops, but can only set
     // pixels to single byte values
@@ -188,7 +193,7 @@ void clear_screen(SDLOffscreenBuffer buffer, uint32_t pixel_value)
 }
 
 
-void update(Star stars[], int num_stars, QuadTreeNode *cells_root, SDLWindowDimension* dimension)
+void update(struct Star stars[], int num_stars, struct QuadTreeNode *cells_root)
 {
     for (int i = 0; i < num_stars; ++i)
     {
@@ -215,7 +220,7 @@ void update(Star stars[], int num_stars, QuadTreeNode *cells_root, SDLWindowDime
 }
 
 // TODO: pass a pointer to buffer?
-void draw_grid(SDLOffscreenBuffer buffer, QuadTreeNode *node, uint32_t color)
+void draw_grid(struct SDLOffscreenBuffer buffer, struct QuadTreeNode *node, uint32_t color)
 {
     if (node)
     {
@@ -244,7 +249,7 @@ void draw_grid(SDLOffscreenBuffer buffer, QuadTreeNode *node, uint32_t color)
     }
 }
 
-void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars, QuadTreeNode *cells_root)
+void render(struct SDLOffscreenBuffer buffer, float dt, struct Star stars[], int num_stars, struct QuadTreeNode *cells_root)
 {
     //printf("%f\n", dt);
     for (int i = 0; i < num_stars; ++i)
@@ -260,7 +265,7 @@ void render(SDLOffscreenBuffer buffer, float dt, Star stars[], int num_stars, Qu
 }
 
 
-int main(int argc, char **argv)
+int main(void)
 {
     if (SDL_Init(SDL_INIT_VIDEO))
     {
@@ -285,7 +290,7 @@ int main(int argc, char **argv)
 
         if (renderer)
         {
-            SDLWindowDimension dimension = sdl_get_window_dimension(window);
+            struct SDLWindowDimension dimension = sdl_get_window_dimension(window);
             sdl_resize_texture(&global_back_buffer, renderer, dimension.width, dimension.height);
 
             bool running = true;
@@ -293,7 +298,7 @@ int main(int argc, char **argv)
 
             uint64_t lag = 0;
             uint64_t previous_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();
-            Star stars[NUM_STARS];
+            struct Star stars[NUM_STARS];
             for (int i = 0; i < NUM_STARS; ++i)
             {
                 stars[i].x = rand() % dimension.width;
@@ -306,7 +311,7 @@ int main(int argc, char **argv)
                 //printf("%f, %f, %f\n", stars[i].angle, stars[i].speed, stars[i].mass);
             }
 
-            QuadTreeNode *cells_root = quad_tree_node_init(
+            struct QuadTreeNode *cells_root = quad_tree_node_init(
                 global_back_buffer.width / 2,
                 global_back_buffer.height / 2,
                 global_back_buffer.width / 2,
@@ -333,7 +338,7 @@ int main(int argc, char **argv)
 
                 while (lag >= MS_PER_UPDATE)
                 {
-                    update(stars, NUM_STARS, cells_root, &dimension);
+                    update(stars, NUM_STARS, cells_root);
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
@@ -341,7 +346,7 @@ int main(int argc, char **argv)
                 clear_screen(global_back_buffer, COLOR_BACKGROUND);
 #endif
                 render(global_back_buffer, lag/SECOND, stars, NUM_STARS, cells_root);
-                sdl_update_window(window, renderer, global_back_buffer);
+                sdl_update_window(renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
                     SDL_Delay(MS_PER_FRAME - elapsed_ms);

@@ -4,6 +4,10 @@
 #include <math.h>
 #include <stdint.h>
 
+#ifndef M_PI
+#define M_PI (3.14159265358979323846264338327950288)
+#endif
+
 #define GRAVITATION 0.1f
 
 struct Star
@@ -23,20 +27,20 @@ struct Vec2d
     float length;
 };
 
-Vec2d *vec2d_add(float angle1, float length1, float angle2, float length2)
+struct Vec2d *vec2d_add(float angle1, float length1, float angle2, float length2)
 {
     float x = sinf(angle1) * length1 + sinf(angle2) * length2;
     float y = cosf(angle1) * length1 + cosf(angle2) * length2;
 
-    Vec2d *new_vec = (Vec2d*)malloc(sizeof(Vec2d));
+    struct Vec2d *new_vec = (struct Vec2d*)malloc(sizeof(struct Vec2d));
     new_vec->angle = 0.5 * M_PI - atan2f(y, x);
     new_vec->length = hypotf(x, y);
     return new_vec;
 }
 
-void star_accelerate(Star *s, float angle, float acceleration)
+void star_accelerate(struct Star *s, float angle, float acceleration)
 {
-    Vec2d *new_vec = vec2d_add(s->angle, s->speed, angle, acceleration);
+    struct Vec2d *new_vec = vec2d_add(s->angle, s->speed, angle, acceleration);
     s->angle = new_vec->angle;
     s->speed = new_vec->length;
     free(new_vec);
@@ -47,7 +51,7 @@ float star_calc_size(float mass)
     return 0.5 * (powf(mass, 0.5));
 }
 
-void star_attract(Star *s1, Star *s2)
+void star_attract(struct Star *s1, struct Star *s2)
 {
     float dx = s1->x - s2->x;
     float dy = s1->y - s2->y;

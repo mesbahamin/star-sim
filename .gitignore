@@ -1,2 +1,3 @@
-star-garden
 *.swp
+debug/*
+release/*
