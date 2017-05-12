@@ -18,9 +18,9 @@ RELDIR = release
 RELEXE = $(RELDIR)/$(EXE)
 RELCFLAGS = -O2 -Os
 
-.PHONY: all clean debug prep release run test
+.PHONY: all clean debug memcheck prep release run test
 
-all: debug
+all: debug release
 
 clean:
 	rm -f $(RELEXE) $(DBGEXE)
@@ -28,13 +28,14 @@ clean:
 debug: prep
 	$(CC) $(CFLAGS) $(DBGCFLAGS) $(SRC) -o $(DBGEXE) $(LDFLAGS)
 
+memcheck: debug
+	valgrind --track-origins=yes ./$(DBGEXE)
+
 prep:
 	@mkdir -p $(DBGDIR) $(RELDIR)
 
 release: prep
 	$(CC) $(CFLAGS) $(RELCFLAGS) $(SRC) -o $(RELEXE) $(LDFLAGS)
 
-run:
+run: debug
 	./$(DBGEXE)
-
-test: debug run

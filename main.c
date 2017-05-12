@@ -1,11 +1,13 @@
-#include <math.h>
 #include <inttypes.h>
+#include <math.h>
 #include <SDL.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
 #include "star.h"
 #include "barnes_hut.h"
 
@@ -193,7 +195,7 @@ void clear_screen(struct SDLOffscreenBuffer buffer, uint32_t pixel_value)
 }
 
 
-void update(struct Star stars[], int num_stars, struct QuadTreeNode *cells_root)
+void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 {
     for (int i = 0; i < num_stars; ++i)
     {
@@ -214,42 +216,40 @@ void update(struct Star stars[], int num_stars, struct QuadTreeNode *cells_root)
     int dist_x = global_back_buffer.width / 2;
     int dist_y = global_back_buffer.height / 2;
 
-    quad_tree_node_free(cells_root);
-    cells_root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
-    quad_tree_node_subdivide(cells_root, stars, num_stars);
+    quad_tree_node_free(qt->root);
+    qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
+    quad_tree_node_subdivide(qt->root, stars, num_stars);
 }
+
 
 // TODO: pass a pointer to buffer?
 void draw_grid(struct SDLOffscreenBuffer buffer, struct QuadTreeNode *node, uint32_t color)
 {
-    if (node)
+    if (node && node->ne && node->nw && node->sw && node->se)
     {
-        for (int i = 0; i < 4; ++i)
+        for (int x = (node->cell->center_x - node->cell->distance_x);
+            x <= (node->cell->center_x + node->cell->distance_x);
+            ++x)
         {
-            if (node->children[i])
-            {
-                for (
-                    int x = (node->cell->center_x - node->cell->distance_x);
-                    x <= (node->cell->center_x + node->cell->distance_x);
-                    ++x)
-                {
-                    set_pixel(buffer, x, node->cell->center_y, color);
-                }
-
-                for (
-                    int y = (node->cell->center_y - node->cell->distance_y);
-                    y <= (node->cell->center_y + node->cell->distance_y);
-                    ++y)
-                {
-                    set_pixel(buffer, node->cell->center_x, y, color);
-                }
-                draw_grid(buffer, node->children[i], color);
-            }
+            set_pixel(buffer, x, node->cell->center_y, color);
         }
+
+        for (int y = (node->cell->center_y - node->cell->distance_y);
+            y <= (node->cell->center_y + node->cell->distance_y);
+            ++y)
+        {
+            set_pixel(buffer, node->cell->center_x, y, color);
+        }
+
+        draw_grid(buffer, node->ne, color);
+        draw_grid(buffer, node->nw, color);
+        draw_grid(buffer, node->sw, color);
+        draw_grid(buffer, node->se, color);
     }
 }
 
-void render(struct SDLOffscreenBuffer buffer, float dt, struct Star stars[], int num_stars, struct QuadTreeNode *cells_root)
+
+void render(struct SDLOffscreenBuffer buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt)
 {
     //printf("%f\n", dt);
     for (int i = 0; i < num_stars; ++i)
@@ -261,7 +261,7 @@ void render(struct SDLOffscreenBuffer buffer, float dt, struct Star stars[], int
             stars[i].color);
     }
 
-    draw_grid(buffer, cells_root, COLOR_GREEN);
+    draw_grid(buffer, qt->root, COLOR_GREEN);
 }
 
 
@@ -311,11 +311,7 @@ int main(void)
                 //printf("%f, %f, %f\n", stars[i].angle, stars[i].speed, stars[i].mass);
             }
 
-            struct QuadTreeNode *cells_root = quad_tree_node_init(
-                global_back_buffer.width / 2,
-                global_back_buffer.height / 2,
-                global_back_buffer.width / 2,
-                global_back_buffer.height / 2);
+            struct QuadTree *qt = quad_tree_init();
 
             while (running)
             {
@@ -336,22 +332,26 @@ int main(void)
 
                 dimension = sdl_get_window_dimension(window);
 
+                update(stars, NUM_STARS, qt);
                 while (lag >= MS_PER_UPDATE)
                 {
-                    update(stars, NUM_STARS, cells_root);
+                    update(stars, NUM_STARS, qt);
                     //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                     lag -= MS_PER_UPDATE;
                 }
+
 #ifndef TRAILS
                 clear_screen(global_back_buffer, COLOR_BACKGROUND);
 #endif
-                render(global_back_buffer, lag/SECOND, stars, NUM_STARS, cells_root);
+                render(global_back_buffer, lag/SECOND, stars, NUM_STARS, qt);
                 sdl_update_window(renderer, global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
                     SDL_Delay(MS_PER_FRAME - elapsed_ms);
                 }
             }
+
+            quad_tree_free(qt);
         }
         else
         {
