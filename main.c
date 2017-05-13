@@ -115,14 +115,14 @@ void sdl_resize_texture(struct SDLOffscreenBuffer *buffer, SDL_Renderer *rendere
 }
 
 
-void sdl_update_window(SDL_Renderer *renderer, struct SDLOffscreenBuffer buffer)
+void sdl_update_window(SDL_Renderer *renderer, struct SDLOffscreenBuffer *buffer)
 {
-    if (SDL_UpdateTexture(buffer.texture, 0, buffer.memory, buffer.pitch))
+    if (SDL_UpdateTexture(buffer->texture, 0, buffer->memory, buffer->pitch))
     {
         // TODO(amin): Handle this error
     }
 
-    SDL_RenderCopy(renderer, buffer.texture, 0, 0);
+    SDL_RenderCopy(renderer, buffer->texture, 0, 0);
     SDL_RenderPresent(renderer);
 }
 
@@ -160,7 +160,7 @@ bool handle_event(SDL_Event *event)
                 {
                     SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);
                     SDL_Renderer *renderer = SDL_GetRenderer(window);
-                    sdl_update_window(renderer, global_back_buffer);
+                    sdl_update_window(renderer, &global_back_buffer);
                 } break;
             }
         } break;
@@ -169,17 +169,16 @@ bool handle_event(SDL_Event *event)
 }
 
 
-// TODO: change buffer to a pointer
-void set_pixel(struct SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_t color)
+void set_pixel(struct SDLOffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32_t color)
 {
     /* Origin is (0, 0) on the upper left.
      * To go one pixel right, increment by 32 bits.
      * To go one pixel down, increment by (buffer.width * 32) bits.
      */
-    if (x < buffer.width && y < buffer.height)
+    if (x < buffer->width && y < buffer->height)
     {
-        uint8_t *pixel_pos = (uint8_t *)buffer.memory;
-        pixel_pos += ((BYTES_PER_PIXEL*x) + (buffer.pitch * y));
+        uint8_t *pixel_pos = (uint8_t *)buffer->memory;
+        pixel_pos += ((BYTES_PER_PIXEL*x) + (buffer->pitch * y));
         uint32_t *pixel = (uint32_t *)pixel_pos;
         *pixel = color;
     }
@@ -187,11 +186,11 @@ void set_pixel(struct SDLOffscreenBuffer buffer, uint32_t x, uint32_t y, uint32_
 
 
 // TODO: change buffer to a pointer
-void clear_screen(struct SDLOffscreenBuffer buffer, uint32_t pixel_value)
+void clear_screen(struct SDLOffscreenBuffer *buffer, uint32_t pixel_value)
 {
     // NOTE(amin): Memset is faster than nested for loops, but can only set
     // pixels to single byte values
-    memset(buffer.memory, pixel_value, buffer.height * buffer.width * BYTES_PER_PIXEL);
+    memset(buffer->memory, pixel_value, buffer->height * buffer->width * BYTES_PER_PIXEL);
 }
 
 
@@ -223,7 +222,7 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 
 
 // TODO: pass a pointer to buffer?
-void draw_grid(struct SDLOffscreenBuffer buffer, struct QuadTreeNode *node, uint32_t color)
+void draw_grid(struct SDLOffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
 {
     if (node && node->ne && node->nw && node->sw && node->se)
     {
@@ -249,7 +248,7 @@ void draw_grid(struct SDLOffscreenBuffer buffer, struct QuadTreeNode *node, uint
 }
 
 
-void render(struct SDLOffscreenBuffer buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt)
+void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt)
 {
     //printf("%f\n", dt);
     for (int i = 0; i < num_stars; ++i)
@@ -332,7 +331,6 @@ int main(void)
 
                 dimension = sdl_get_window_dimension(window);
 
-                update(stars, NUM_STARS, qt);
                 while (lag >= MS_PER_UPDATE)
                 {
                     update(stars, NUM_STARS, qt);
@@ -341,10 +339,10 @@ int main(void)
                 }
 
 #ifndef TRAILS
-                clear_screen(global_back_buffer, COLOR_BACKGROUND);
+                clear_screen(&global_back_buffer, COLOR_BACKGROUND);
 #endif
-                render(global_back_buffer, lag/SECOND, stars, NUM_STARS, qt);
-                sdl_update_window(renderer, global_back_buffer);
+                render(&global_back_buffer, lag/SECOND, stars, NUM_STARS, qt);
+                sdl_update_window(renderer, &global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
                     SDL_Delay(MS_PER_FRAME - elapsed_ms);
