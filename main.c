@@ -21,6 +21,7 @@
 
 //#define TRAILS
 //#define FULLSCREEN
+bool SHOW_GRID = false;
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
@@ -139,6 +140,19 @@ bool handle_event(SDL_Event *event)
             should_quit = true;
         } break;
 
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
+        {
+            SDL_Keycode key_code = event->key.keysym.sym;
+            bool is_down = (event->key.state == SDL_PRESSED);
+            if (is_down)
+            {
+                if (key_code == SDLK_g)
+                {
+                    SHOW_GRID = !SHOW_GRID;
+                }
+            }
+        } break;
         case SDL_WINDOWEVENT:
         {
             switch(event->window.event)
@@ -185,7 +199,6 @@ void set_pixel(struct SDLOffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32
 }
 
 
-// TODO: change buffer to a pointer
 void clear_screen(struct SDLOffscreenBuffer *buffer, uint32_t pixel_value)
 {
     // NOTE(amin): Memset is faster than nested for loops, but can only set
@@ -221,7 +234,6 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 }
 
 
-// TODO: pass a pointer to buffer?
 void draw_grid(struct SDLOffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
 {
     if (node && node->ne && node->nw && node->sw && node->se)
@@ -260,7 +272,10 @@ void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], in
             stars[i].color);
     }
 
-    draw_grid(buffer, qt->root, COLOR_GREEN);
+    if (SHOW_GRID)
+    {
+        draw_grid(buffer, qt->root, COLOR_GREEN);
+    }
 }
 
 
