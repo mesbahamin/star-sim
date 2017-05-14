@@ -20,14 +20,14 @@
 #endif
 
 //#define TRAILS
-//#define FULLSCREEN
+#define FULLSCREEN
 bool SHOW_GRID = false;
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_STARS 100
+#define NUM_STARS 2000
 #define DRAG 1
 
 #define SECOND 1000.0f
@@ -209,20 +209,8 @@ void clear_screen(struct SDLOffscreenBuffer *buffer, uint32_t pixel_value)
 
 void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 {
-    for (int i = 0; i < num_stars; ++i)
-    {
-        for (int j = i + 1; j < num_stars; ++j)
-        {
-            star_attract(&stars[i], &stars[j]);
-        }
-        stars[i].x += sinf(stars[i].angle) * stars[i].speed;
-        stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
-        //printf("%d: (%f, %f)\n", i, stars[i].x, stars[i].y);
-
-        stars[i].speed *= DRAG;
-        //printf("%f, %f\n", stars[i].x, stars[i].y);
-    }
-
+    // TODO: either limit the bounds of the simulation, or base these values on
+    // the smallest bounding rectangle
     int center_x = global_back_buffer.width / 2;
     int center_y = global_back_buffer.height / 2;
     int dist_x = global_back_buffer.width / 2;
@@ -230,7 +218,21 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 
     quad_tree_node_free(qt->root);
     qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
-    quad_tree_node_subdivide(qt->root, stars, num_stars);
+    for (int i = 0; i < num_stars; ++i)
+    {
+        quad_tree_node_insert_star(qt->root, &(stars[i]));
+    }
+
+    quad_tree_stars_attract(qt->root);
+
+    for (int i = 0; i < num_stars; ++i)
+    {
+        stars[i].x += sinf(stars[i].angle) * stars[i].speed;
+        stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
+        stars[i].speed *= DRAG;
+    }
+
+
 }
 
 
