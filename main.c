@@ -19,9 +19,9 @@
 #define M_PI (3.14159265358979323846264338327950288)
 #endif
 
-//#define TRAILS
 #define FULLSCREEN
-bool SHOW_GRID = false;
+bool RENDER_GRID = false;
+bool RENDER_TRAILS = false;
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
@@ -128,6 +128,14 @@ void sdl_update_window(SDL_Renderer *renderer, struct SDLOffscreenBuffer *buffer
 }
 
 
+void clear_screen(struct SDLOffscreenBuffer *buffer, uint32_t pixel_value)
+{
+    // NOTE(amin): Memset is faster than nested for loops, but can only set
+    // pixels to single byte values
+    memset(buffer->memory, pixel_value, buffer->height * buffer->width * BYTES_PER_PIXEL);
+}
+
+
 bool handle_event(SDL_Event *event)
 {
     bool should_quit = false;
@@ -149,7 +157,12 @@ bool handle_event(SDL_Event *event)
             {
                 if (key_code == SDLK_g)
                 {
-                    SHOW_GRID = !SHOW_GRID;
+                    RENDER_GRID = !RENDER_GRID;
+                }
+                if (key_code == SDLK_t)
+                {
+                    RENDER_TRAILS = !RENDER_TRAILS;
+                    clear_screen(&global_back_buffer, COLOR_BACKGROUND);
                 }
             }
         } break;
@@ -199,14 +212,6 @@ void set_pixel(struct SDLOffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32
 }
 
 
-void clear_screen(struct SDLOffscreenBuffer *buffer, uint32_t pixel_value)
-{
-    // NOTE(amin): Memset is faster than nested for loops, but can only set
-    // pixels to single byte values
-    memset(buffer->memory, pixel_value, buffer->height * buffer->width * BYTES_PER_PIXEL);
-}
-
-
 void update(struct Star stars[], int num_stars, struct QuadTree *qt)
 {
     // TODO: either limit the bounds of the simulation, or base these values on
@@ -231,8 +236,6 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
         stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
         stars[i].speed *= DRAG;
     }
-
-
 }
 
 
@@ -274,7 +277,7 @@ void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], in
             stars[i].color);
     }
 
-    if (SHOW_GRID)
+    if (RENDER_GRID)
     {
         draw_grid(buffer, qt->root, COLOR_GREEN);
     }
@@ -355,9 +358,10 @@ int main(void)
                     lag -= MS_PER_UPDATE;
                 }
 
-#ifndef TRAILS
-                clear_screen(&global_back_buffer, COLOR_BACKGROUND);
-#endif
+                if (!RENDER_TRAILS)
+                {
+                    clear_screen(&global_back_buffer, COLOR_BACKGROUND);
+                }
                 render(&global_back_buffer, lag/SECOND, stars, NUM_STARS, qt);
                 sdl_update_window(renderer, &global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
