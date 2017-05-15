@@ -22,12 +22,13 @@
 #define FULLSCREEN
 bool RENDER_GRID = false;
 bool RENDER_TRAILS = false;
+bool RENDER_VIRTUAL_STARS = false;
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_STARS 2000
+#define NUM_STARS 200
 #define DRAG 1
 
 #define SECOND 1000.0f
@@ -80,6 +81,8 @@ struct SDLWindowDimension
 
 
 static struct SDLOffscreenBuffer global_back_buffer;
+static struct Star virtual_stars[NUM_STARS];
+static int num_virtual_stars = 0;
 
 
 struct SDLWindowDimension sdl_get_window_dimension(SDL_Window *window)
@@ -164,6 +167,10 @@ bool handle_event(SDL_Event *event)
                     RENDER_TRAILS = !RENDER_TRAILS;
                     clear_screen(&global_back_buffer, COLOR_BACKGROUND);
                 }
+                if (key_code == SDLK_v)
+                {
+                    RENDER_VIRTUAL_STARS = !RENDER_VIRTUAL_STARS;
+                }
             }
         } break;
         case SDL_WINDOWEVENT:
@@ -228,7 +235,11 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
         quad_tree_node_insert_star(qt->root, &(stars[i]));
     }
 
-    quad_tree_stars_attract(qt->root);
+    num_virtual_stars = 0;
+    quad_tree_set_virtual_stars(qt->root, virtual_stars, &num_virtual_stars, NUM_STARS);
+    printf("num_virtual_stars: %d\n", num_virtual_stars);
+
+    quad_tree_stars_attract(qt->root, virtual_stars, num_virtual_stars);
 
     for (int i = 0; i < num_stars; ++i)
     {
@@ -275,6 +286,14 @@ void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], in
             stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
             stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
             stars[i].color);
+    }
+
+    if (RENDER_VIRTUAL_STARS)
+    {
+        for (int i = 0; i < num_virtual_stars; ++i)
+        {
+            set_pixel(buffer, virtual_stars[i].x, virtual_stars[i].y, COLOR_MAGENTA);
+        }
     }
 
     if (RENDER_GRID)

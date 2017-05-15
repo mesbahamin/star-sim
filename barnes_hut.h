@@ -221,18 +221,62 @@ void quad_tree_free(struct QuadTree *qt)
 }
 
 
-void quad_tree_stars_attract(struct QuadTreeNode *node)
+void quad_tree_set_virtual_stars(struct QuadTreeNode *node, struct Star virtual_stars[], int *current_num, int max_virtual_stars)
 {
     if (!node)
     {
         return;
     }
+
     if (!quad_tree_node_is_leaf(node))
     {
-        quad_tree_stars_attract(node->ne);
-        quad_tree_stars_attract(node->nw);
-        quad_tree_stars_attract(node->sw);
-        quad_tree_stars_attract(node->se);
+        quad_tree_set_virtual_stars(node->ne, virtual_stars, current_num, max_virtual_stars);
+        quad_tree_set_virtual_stars(node->nw, virtual_stars, current_num, max_virtual_stars);
+        quad_tree_set_virtual_stars(node->sw, virtual_stars, current_num, max_virtual_stars);
+        quad_tree_set_virtual_stars(node->se, virtual_stars, current_num, max_virtual_stars);
+    }
+    else if (*current_num < max_virtual_stars)
+    {
+        // TODO: handle mass more intelligently
+        float x_sum = 0;
+        float y_sum = 0;
+        float mass_sum = 0;
+
+        for (int i = 0; i < node->cell->num_stars; ++i)
+        {
+            x_sum += node->cell->stars[i]->x;
+            y_sum += node->cell->stars[i]->y;
+            mass_sum += node->cell->stars[i]->mass;
+        }
+
+        float x_avg = x_sum / node->cell->num_stars;
+        float y_avg = y_sum / node->cell->num_stars;
+
+        virtual_stars[*current_num].x = x_avg;
+        virtual_stars[*current_num].y = y_avg;
+        virtual_stars[*current_num].mass = mass_sum;
+        (*current_num)++;
+    }
+    else
+    {
+        printf("Virtual_stars buffer overflow.\n");
+    }
+}
+
+
+void quad_tree_stars_attract(struct QuadTreeNode *node, struct Star virtual_stars[], int num_virtual_stars)
+{
+    if (!node)
+    {
+        return;
+    }
+
+    if (!quad_tree_node_is_leaf(node))
+    {
+        quad_tree_stars_attract(node->ne, virtual_stars, num_virtual_stars);
+        quad_tree_stars_attract(node->nw, virtual_stars, num_virtual_stars);
+        quad_tree_stars_attract(node->sw, virtual_stars, num_virtual_stars);
+        quad_tree_stars_attract(node->se, virtual_stars, num_virtual_stars);
     }
     else
     {
@@ -242,6 +286,13 @@ void quad_tree_stars_attract(struct QuadTreeNode *node)
             {
                 star_attract(node->cell->stars[i], node->cell->stars[j]);
 
+            }
+            for (int k = 0; k < num_virtual_stars; ++k)
+            {
+                if (!cell_contains_star(node->cell, &virtual_stars[k]))
+                {
+                    star_attract(node->cell->stars[i], &virtual_stars[k]);
+                }
             }
         }
     }
