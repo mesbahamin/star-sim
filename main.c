@@ -20,6 +20,9 @@
 #endif
 
 #define FULLSCREEN
+#define RESPAWN_STARS
+#define USE_TEST_SEED
+bool BRUTE_FORCE = false;
 bool RENDER_GRID = false;
 bool RENDER_TRAILS = false;
 bool RENDER_VIRTUAL_STARS = false;
@@ -28,7 +31,7 @@ bool RENDER_VIRTUAL_STARS = false;
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define BYTES_PER_PIXEL 4
-#define NUM_STARS 200
+#define NUM_STARS 100
 #define DRAG 1
 
 #define SECOND 1000.0f
@@ -158,6 +161,10 @@ bool handle_event(SDL_Event *event)
             bool is_down = (event->key.state == SDL_PRESSED);
             if (is_down)
             {
+                if (key_code == SDLK_b)
+                {
+                    BRUTE_FORCE = !BRUTE_FORCE;
+                }
                 if (key_code == SDLK_g)
                 {
                     RENDER_GRID = !RENDER_GRID;
@@ -228,24 +235,47 @@ void update(struct Star stars[], int num_stars, struct QuadTree *qt)
     int dist_x = global_back_buffer.width / 2;
     int dist_y = global_back_buffer.height / 2;
 
-    quad_tree_node_free(qt->root);
-    qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
-    for (int i = 0; i < num_stars; ++i)
+    if (BRUTE_FORCE)
     {
-        quad_tree_node_insert_star(qt->root, &(stars[i]));
+        for (int i = 0; i < num_stars; ++i)
+        {
+            for (int j = i + 1; j < num_stars; ++j)
+            {
+                star_attract(&stars[i], &stars[j]);
+            }
+        }
     }
+    else
+    {
+        quad_tree_node_free(qt->root);
+        qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
+        for (int i = 0; i < num_stars; ++i)
+        {
+            quad_tree_node_insert_star(qt->root, &(stars[i]));
+        }
 
-    num_virtual_stars = 0;
-    quad_tree_set_virtual_stars(qt->root, virtual_stars, &num_virtual_stars, NUM_STARS);
-    printf("num_virtual_stars: %d\n", num_virtual_stars);
+        num_virtual_stars = 0;
+        quad_tree_set_virtual_stars(qt->root, virtual_stars, &num_virtual_stars, NUM_STARS);
+        //printf("num_virtual_stars: %d\n", num_virtual_stars);
 
-    quad_tree_stars_attract(qt->root, virtual_stars, num_virtual_stars);
+        quad_tree_stars_attract(qt->root, virtual_stars, num_virtual_stars);
 
+    }
     for (int i = 0; i < num_stars; ++i)
     {
         stars[i].x += sinf(stars[i].angle) * stars[i].speed;
         stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
         stars[i].speed *= DRAG;
+#ifdef RESPAWN_STARS
+        if (stars[i].x < 0 || stars[i].x > global_back_buffer.width
+            || stars[i].y < 0 || stars[i].y > global_back_buffer.height)
+        {
+            stars[i].x = rand() % global_back_buffer.width;
+            stars[i].y = rand() % global_back_buffer.height;
+            stars[i].angle = 0;
+            stars[i].speed = 0;
+        }
+#endif
     }
 }
 
@@ -279,13 +309,27 @@ void draw_grid(struct SDLOffscreenBuffer *buffer, struct QuadTreeNode *node, uin
 void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt)
 {
     //printf("%f\n", dt);
-    for (int i = 0; i < num_stars; ++i)
+    if (BRUTE_FORCE)
     {
-        set_pixel(
-            buffer,
-            stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-            stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
-            stars[i].color);
+        for (int i = 0; i < num_stars; ++i)
+        {
+            set_pixel(
+                buffer,
+                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
+                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
+                COLOR_CYAN);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < num_stars; ++i)
+        {
+            set_pixel(
+                buffer,
+                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
+                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
+                stars[i].color);
+        }
     }
 
     if (RENDER_VIRTUAL_STARS)
@@ -332,7 +376,12 @@ int main(void)
             sdl_resize_texture(&global_back_buffer, renderer, dimension.width, dimension.height);
 
             bool running = true;
+
+#ifdef USE_TEST_SEED
+            srand((uint32_t)0);
+#else
             srand((uint32_t)time(NULL));
+#endif
 
             uint64_t lag = 0;
             uint64_t previous_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();

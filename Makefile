@@ -18,7 +18,7 @@ RELDIR = release
 RELEXE = $(RELDIR)/$(EXE)
 RELCFLAGS = -O2 -Os
 
-.PHONY: all clean debug memcheck prep release run test
+.PHONY: all clean debug memcheck prep release run
 
 all: debug release
 
