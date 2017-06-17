@@ -237,20 +237,21 @@ void quad_tree_set_virtual_stars(struct QuadTreeNode *node, struct Star virtual_
     }
     else if (*current_num < max_virtual_stars)
     {
-        // TODO: handle mass more intelligently
         float x_sum = 0;
         float y_sum = 0;
         float mass_sum = 0;
 
         for (int i = 0; i < node->cell->num_stars; ++i)
         {
-            x_sum += node->cell->stars[i]->x;
-            y_sum += node->cell->stars[i]->y;
-            mass_sum += node->cell->stars[i]->mass;
+            struct Star *s = node->cell->stars[i];
+
+            mass_sum += s->mass;
+            x_sum += s->x * s->mass;
+            y_sum += s->y * s->mass;
         }
 
-        float x_avg = x_sum / node->cell->num_stars;
-        float y_avg = y_sum / node->cell->num_stars;
+        float x_avg = x_sum / mass_sum;
+        float y_avg = y_sum / mass_sum;
 
         virtual_stars[*current_num].x = x_avg;
         virtual_stars[*current_num].y = y_avg;
@@ -259,7 +260,9 @@ void quad_tree_set_virtual_stars(struct QuadTreeNode *node, struct Star virtual_
     }
     else
     {
-        printf("Virtual_stars buffer overflow.\n");
+        printf("Virtual_stars buffer overflow:\n\tcurrent_num: %d\n\tmax_virtual_stars: %d\n",
+            *current_num,
+            max_virtual_stars);
     }
 }
 
