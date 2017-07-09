@@ -26,6 +26,7 @@ bool BRUTE_FORCE = false;
 bool RENDER_GRID = false;
 bool RENDER_TRAILS = false;
 bool RENDER_VIRTUAL_STARS = false;
+bool PAUSED = false;
 
 #define TITLE "Stars"
 #define SCREEN_WIDTH 640
@@ -168,6 +169,10 @@ bool handle_event(SDL_Event *event)
                 if (key_code == SDLK_g)
                 {
                     RENDER_GRID = !RENDER_GRID;
+                }
+                if (key_code == SDLK_p)
+                {
+                    PAUSED = !PAUSED;
                 }
                 if (key_code == SDLK_t)
                 {
@@ -419,11 +424,18 @@ int main(void)
 
                 dimension = sdl_get_window_dimension(window);
 
-                while (lag >= MS_PER_UPDATE)
+                if (PAUSED)
                 {
-                    update(stars, NUM_STARS, qt);
-                    //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
-                    lag -= MS_PER_UPDATE;
+                    lag = 0;
+                }
+                else
+                {
+                    while (lag >= MS_PER_UPDATE)
+                    {
+                        update(stars, NUM_STARS, qt);
+                        //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
+                        lag -= MS_PER_UPDATE;
+                    }
                 }
 
                 if (!RENDER_TRAILS)
