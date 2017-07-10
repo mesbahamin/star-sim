@@ -8,18 +8,24 @@
 // TODO: Remove this.
 #include "star.h"
 
-#define MAX_STARS_PER_CELL 10
 // TODO: Limit tree depth
+#ifndef THETA
+#define THETA 0.5f
+#endif
 
 struct Cell
 {
-    int num_stars;
     float center_x;
     float center_y;
     float distance_x;
     float distance_y;
+    float mass_total;
+    float mass_center_x;
+    float mass_center_y;
+    float stars_sum_x;
+    float stars_sum_y;
     // TODO: Make this a void*.
-    struct Star *stars[MAX_STARS_PER_CELL];
+    struct Star *star;
 };
 
 struct QuadTreeNode
@@ -46,11 +52,12 @@ struct Cell *cell_init(float center_x, float center_y, float distance_x, float d
         cell->center_y = center_y;
         cell->distance_x = distance_x;
         cell->distance_y = distance_y;
-        cell->num_stars = 0;
-        for (int i = 0; i < MAX_STARS_PER_CELL; ++i)
-        {
-            cell->stars[i] = NULL;
-        }
+        cell->mass_center_x = center_x;
+        cell->mass_center_y = center_x;
+        cell->mass_total = 0;
+        cell->stars_sum_x = 0;
+        cell->stars_sum_y = 0;
+        cell->star = NULL;
     }
     return cell;
 }
@@ -74,33 +81,9 @@ bool cell_contains_star(struct Cell *c, struct Star *s)
 }
 
 
-bool cell_insert_star(struct Cell *c, struct Star *s)
+bool cell_is_empty(struct Cell *c)
 {
-    bool star_inserted = false;
-    if (c)
-    {
-        if (c->num_stars < MAX_STARS_PER_CELL)
-        {
-            c->stars[c->num_stars] = s;
-            c->num_stars += 1;
-            star_inserted = true;
-        }
-    }
-    return star_inserted;
-}
-
-
-int cell_count_stars_contained(struct Cell *c, struct Star stars[], int num_stars)
-{
-    int count = 0;
-    for (int i = 0; i < num_stars; ++i)
-    {
-        if (cell_contains_star(c, &(stars[i])))
-        {
-            count++;
-        }
-    }
-    return count;
+    return !(c->star);
 }
 
 
@@ -143,46 +126,9 @@ bool quad_tree_node_is_leaf(struct QuadTreeNode *node)
 }
 
 
-void quad_tree_node_insert_star(struct QuadTreeNode *node, struct Star *star)
+void quad_tree_node_subdivide(struct QuadTreeNode *node)
 {
-    if (node && cell_contains_star(node->cell, star))
-    {
-        bool inserted = cell_insert_star(node->cell, star);
-        if (!inserted)
-        {
-            if (quad_tree_node_is_leaf(node))
-            {
-                float child_distance_x = node->cell->distance_x / 2;
-                float child_distance_y = node->cell->distance_y / 2;
-
-                node->ne = quad_tree_node_init(node->cell->center_x + child_distance_x, node->cell->center_y + child_distance_y, child_distance_x, child_distance_y);
-                node->nw = quad_tree_node_init(node->cell->center_x - child_distance_x, node->cell->center_y + child_distance_y, child_distance_x, child_distance_y);
-                node->sw = quad_tree_node_init(node->cell->center_x - child_distance_x, node->cell->center_y - child_distance_y, child_distance_x, child_distance_y);
-                node->se = quad_tree_node_init(node->cell->center_x + child_distance_x, node->cell->center_y - child_distance_y, child_distance_x, child_distance_y);
-
-                for (int i = 0; i < node->cell->num_stars; ++i)
-                {
-                    quad_tree_node_insert_star(node->ne, node->cell->stars[i]);
-                    quad_tree_node_insert_star(node->nw, node->cell->stars[i]);
-                    quad_tree_node_insert_star(node->sw, node->cell->stars[i]);
-                    quad_tree_node_insert_star(node->se, node->cell->stars[i]);
-                    node->cell->stars[i] = NULL;
-                }
-            }
-
-            quad_tree_node_insert_star(node->ne, star);
-            quad_tree_node_insert_star(node->nw, star);
-            quad_tree_node_insert_star(node->sw, star);
-            quad_tree_node_insert_star(node->se, star);
-        }
-    }
-}
-
-
-// TODO: Get rid of this
-void quad_tree_node_subdivide(struct QuadTreeNode *node, struct Star stars[], int num_stars)
-{
-    if (node && cell_count_stars_contained(node->cell, stars, num_stars) > MAX_STARS_PER_CELL)
+    if (node && quad_tree_node_is_leaf(node))
     {
         float child_distance_x = node->cell->distance_x / 2;
         float child_distance_y = node->cell->distance_y / 2;
@@ -191,11 +137,54 @@ void quad_tree_node_subdivide(struct QuadTreeNode *node, struct Star stars[], in
         node->nw = quad_tree_node_init(node->cell->center_x - child_distance_x, node->cell->center_y + child_distance_y, child_distance_x, child_distance_y);
         node->sw = quad_tree_node_init(node->cell->center_x - child_distance_x, node->cell->center_y - child_distance_y, child_distance_x, child_distance_y);
         node->se = quad_tree_node_init(node->cell->center_x + child_distance_x, node->cell->center_y - child_distance_y, child_distance_x, child_distance_y);
+    }
+}
 
-        quad_tree_node_subdivide(node->ne, stars, num_stars);
-        quad_tree_node_subdivide(node->nw, stars, num_stars);
-        quad_tree_node_subdivide(node->sw, stars, num_stars);
-        quad_tree_node_subdivide(node->se, stars, num_stars);
+
+void quad_tree_node_insert_star(struct QuadTreeNode *node, struct Star *star)
+{
+    if (node && cell_contains_star(node->cell, star))
+    {
+        if (quad_tree_node_is_leaf(node))
+        {
+            if (cell_is_empty(node->cell))
+            {
+                node->cell->star = star;
+            }
+            else
+            {
+                quad_tree_node_subdivide(node);
+
+                quad_tree_node_insert_star(node->ne, node->cell->star);
+                quad_tree_node_insert_star(node->nw, node->cell->star);
+                quad_tree_node_insert_star(node->sw, node->cell->star);
+                quad_tree_node_insert_star(node->se, node->cell->star);
+
+                quad_tree_node_insert_star(node->ne, star);
+                quad_tree_node_insert_star(node->nw, star);
+                quad_tree_node_insert_star(node->sw, star);
+                quad_tree_node_insert_star(node->se, star);
+
+                node->cell->star = NULL;
+            }
+        }
+        else
+        {
+            node->cell->mass_total += star->mass;
+            node->cell->stars_sum_x += star->x * star->mass;
+            node->cell->stars_sum_y += star->y * star->mass;
+
+            float x_avg = node->cell->stars_sum_x / node->cell->mass_total;
+            float y_avg = node->cell->stars_sum_y / node->cell->mass_total;
+
+            node->cell->mass_center_x = x_avg;
+            node->cell->mass_center_y = y_avg;
+
+            quad_tree_node_insert_star(node->ne, star);
+            quad_tree_node_insert_star(node->nw, star);
+            quad_tree_node_insert_star(node->sw, star);
+            quad_tree_node_insert_star(node->se, star);
+        }
     }
 }
 
@@ -221,83 +210,41 @@ void quad_tree_free(struct QuadTree *qt)
 }
 
 
-void quad_tree_set_virtual_stars(struct QuadTreeNode *node, struct Star virtual_stars[], int *current_num, int max_virtual_stars)
+bool node_is_sufficiently_far(struct QuadTreeNode *node, struct Star *star)
 {
-    if (!node)
-    {
-        return;
-    }
+    float s = node->cell->distance_x * 2;
+    float dx = node->cell->mass_center_x - star->x;
+    float dy = node->cell->mass_center_y - star->y;
+    float d = hypotf(dx, dy);
 
-    if (!quad_tree_node_is_leaf(node))
-    {
-        quad_tree_set_virtual_stars(node->ne, virtual_stars, current_num, max_virtual_stars);
-        quad_tree_set_virtual_stars(node->nw, virtual_stars, current_num, max_virtual_stars);
-        quad_tree_set_virtual_stars(node->sw, virtual_stars, current_num, max_virtual_stars);
-        quad_tree_set_virtual_stars(node->se, virtual_stars, current_num, max_virtual_stars);
-    }
-    else if (*current_num < max_virtual_stars)
-    {
-        float x_sum = 0;
-        float y_sum = 0;
-        float mass_sum = 0;
-
-        for (int i = 0; i < node->cell->num_stars; ++i)
-        {
-            struct Star *s = node->cell->stars[i];
-
-            mass_sum += s->mass;
-            x_sum += s->x * s->mass;
-            y_sum += s->y * s->mass;
-        }
-
-        float x_avg = x_sum / mass_sum;
-        float y_avg = y_sum / mass_sum;
-
-        virtual_stars[*current_num].x = x_avg;
-        virtual_stars[*current_num].y = y_avg;
-        virtual_stars[*current_num].mass = mass_sum;
-        (*current_num)++;
-    }
-    else
-    {
-        printf("Virtual_stars buffer overflow:\n\tcurrent_num: %d\n\tmax_virtual_stars: %d\n",
-            *current_num,
-            max_virtual_stars);
-    }
+    return s / d < THETA;
 }
 
 
-void quad_tree_stars_attract(struct QuadTreeNode *node, struct Star virtual_stars[], int num_virtual_stars)
+void quad_tree_calc_force_on_star(struct QuadTreeNode *node, struct Star *star)
 {
-    if (!node)
+    if (!star || !node)
     {
         return;
     }
 
-    if (!quad_tree_node_is_leaf(node))
+    if (quad_tree_node_is_leaf(node) && !cell_is_empty(node->cell) && !cell_contains_star(node->cell, star))
     {
-        quad_tree_stars_attract(node->ne, virtual_stars, num_virtual_stars);
-        quad_tree_stars_attract(node->nw, virtual_stars, num_virtual_stars);
-        quad_tree_stars_attract(node->sw, virtual_stars, num_virtual_stars);
-        quad_tree_stars_attract(node->se, virtual_stars, num_virtual_stars);
+        star_attract(node->cell->star, star);
+    }
+    else if (node_is_sufficiently_far(node, star))
+    {
+        star_attract_to_mass(star,
+                node->cell->mass_total,
+                node->cell->mass_center_x,
+                node->cell->mass_center_y);
     }
     else
     {
-        for (int i = 0; i < node->cell->num_stars; ++i)
-        {
-            for (int j = i + 1; j < node->cell->num_stars; ++j)
-            {
-                star_attract(node->cell->stars[i], node->cell->stars[j]);
-
-            }
-            for (int k = 0; k < num_virtual_stars; ++k)
-            {
-                if (!cell_contains_star(node->cell, &virtual_stars[k]))
-                {
-                    star_attract(node->cell->stars[i], &virtual_stars[k]);
-                }
-            }
-        }
+        quad_tree_calc_force_on_star(node->ne, star);
+        quad_tree_calc_force_on_star(node->nw, star);
+        quad_tree_calc_force_on_star(node->sw, star);
+        quad_tree_calc_force_on_star(node->se, star);
     }
 }
 

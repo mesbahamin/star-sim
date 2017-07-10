@@ -27,6 +27,8 @@ struct Vec2d
     float length;
 };
 
+// TODO: Test whether making this function return a struct (rather than a
+// struct pointer) makes a significant performance difference.
 struct Vec2d *vec2d_add(float angle1, float length1, float angle2, float length2)
 {
     float x = sinf(angle1) * length1 + sinf(angle2) * length2;
@@ -65,5 +67,17 @@ void star_attract(struct Star *s1, struct Star *s2)
         star_accelerate(s2, theta + (0.5 * M_PI), force / s2->mass);
         //printf("%f\n", force);
     }
+}
+
+void star_attract_to_mass(struct Star *star, float mass, float mass_x, float mass_y)
+{
+    float dx = star->x - mass_x;
+    float dy = star->y - mass_y;
+    float distance = hypotf(dx, dy);
+
+    float theta = atan2f(dy, dx);
+    float force = GRAVITATION * (star->mass * mass / powf(distance, 2));
+    star_accelerate(star, theta - (0.5 * M_PI), force / star->mass);
+    //printf("%f\n", force);
 }
 #endif
