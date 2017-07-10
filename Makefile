@@ -12,13 +12,13 @@ EXE = star-garden
 
 DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
-DBGCFLAGS = -g -Og -Werror
+DBGCFLAGS = -g -Og -Werror -pg
 
 RELDIR = release
 RELEXE = $(RELDIR)/$(EXE)
 RELCFLAGS = -O2 -Os
 
-.PHONY: all clean debug memcheck prep release run
+.PHONY: all clean debug memcheck prep profile release run
 
 all: debug release
 
@@ -33,6 +33,9 @@ memcheck: debug
 
 prep:
 	@mkdir -p $(DBGDIR) $(RELDIR)
+
+profile: run
+	gprof $(DBGEXE) gmon.out > profile_output
 
 release: prep
 	$(CC) $(CFLAGS) $(RELCFLAGS) $(SRC) -o $(RELEXE) $(LDFLAGS)

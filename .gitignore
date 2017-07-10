@@ -1,3 +1,6 @@
-*.swp
+profile_output
 debug/*
 release/*
+*.out
+*.png
+*.swp
