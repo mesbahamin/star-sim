@@ -7,7 +7,7 @@ SDL_LDFLAGS := $(shell sdl2-config --libs)
 
 override CFLAGS += $(SDL_CFLAGS)
 
-SRC = main.c star.c barnes_hut.c
+SRC = platform_sdl.c star_garden.c star.c barnes_hut.c
 EXE = star-garden
 
 DBGDIR = debug

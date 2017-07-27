@@ -1,3 +1,5 @@
+#include "star_garden.h"
+
 #include <inttypes.h>
 #include <math.h>
 #include <SDL.h>
@@ -8,8 +10,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "star.h"
-#include "barnes_hut.h"
+#include "platform_sdl.h"
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -19,69 +20,10 @@
 #define M_PI (3.14159265358979323846264338327950288)
 #endif
 
-#define FULLSCREEN
-#define RESPAWN_STARS
-#define USE_TEST_SEED
-bool BRUTE_FORCE = false;
-bool RENDER_GRID = false;
-bool RENDER_TRAILS = false;
-bool PAUSED = false;
-
-#define TITLE "Stars"
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
-#define BYTES_PER_PIXEL 4
-#define NUM_STARS 100
-#define DRAG 1
-
-#define SECOND 1000.0f
-#define FPS 60
-#define MS_PER_FRAME (SECOND / FPS)
-#define UPDATES_PER_SECOND 120
-#define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
-
-#define COLOR_WHITE      0xFFFFFF
-#define COLOR_BLACK      0x000000
-#define COLOR_SOL_BG     0x002B36
-#define COLOR_YELLOW     0xB58900
-#define COLOR_ORANGE     0xCB4B16
-#define COLOR_RED        0xDC322F
-#define COLOR_MAGENTA    0xD33682
-#define COLOR_VIOLET     0x6C71C4
-#define COLOR_BLUE       0x268bD2
-#define COLOR_CYAN       0x2AA198
-#define COLOR_GREEN      0x859900
-#define COLOR_BACKGROUND COLOR_BLACK
-
-typedef enum color_t
-{
-    YELLOW,
-    ORANGE,
-    RED,
-    MAGENTA,
-    VIOLET,
-    BLUE,
-    CYAN,
-    GREEN,
-    NUM_COLORS,
-} color_t;
-
-struct SDLOffscreenBuffer
-{
-    // NOTE(amin): pixels are always 32-bits wide. Memory order: BB GG RR XX.
-    SDL_Texture *texture;
-    void *memory;
-    unsigned int width;
-    unsigned int height;
-    unsigned int pitch;
-};
-
-struct SDLWindowDimension
-{
-    int width;
-    int height;
-};
-
+extern bool PAUSED;
+extern bool BRUTE_FORCE;
+extern bool RENDER_GRID;
+extern bool RENDER_TRAILS;
 
 static struct SDLOffscreenBuffer global_back_buffer;
 
@@ -208,134 +150,6 @@ bool handle_event(SDL_Event *event)
 }
 
 
-void set_pixel(struct SDLOffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32_t color)
-{
-    /* Origin is (0, 0) on the upper left.
-     * To go one pixel right, increment by 32 bits.
-     * To go one pixel down, increment by (buffer.width * 32) bits.
-     */
-    if (x < buffer->width && y < buffer->height)
-    {
-        uint8_t *pixel_pos = (uint8_t *)buffer->memory;
-        pixel_pos += ((BYTES_PER_PIXEL*x) + (buffer->pitch * y));
-        uint32_t *pixel = (uint32_t *)pixel_pos;
-        *pixel = color;
-    }
-}
-
-
-void update(struct Star stars[], int num_stars, struct QuadTree *qt)
-{
-    // TODO: either limit the bounds of the simulation, or base these values on
-    // the smallest bounding rectangle
-    int center_x = global_back_buffer.width / 2;
-    int center_y = global_back_buffer.height / 2;
-    int dist_x = global_back_buffer.width / 2;
-    int dist_y = global_back_buffer.height / 2;
-
-    if (BRUTE_FORCE)
-    {
-        for (int i = 0; i < num_stars; ++i)
-        {
-            for (int j = i + 1; j < num_stars; ++j)
-            {
-                star_attract(&stars[i], &stars[j]);
-            }
-        }
-    }
-    else
-    {
-        quad_tree_node_free(qt->root);
-        qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
-        for (int i = 0; i < num_stars; ++i)
-        {
-            quad_tree_node_insert_star(qt->root, &(stars[i]));
-        }
-        for (int i = 0; i < num_stars; ++i)
-        {
-            // TODO: Will this result in stars being attracted to each other
-            // twice?
-            quad_tree_calc_force_on_star(qt->root, &(stars[i]));
-        }
-    }
-    for (int i = 0; i < num_stars; ++i)
-    {
-        stars[i].x += sinf(stars[i].angle) * stars[i].speed;
-        stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
-        stars[i].speed *= DRAG;
-#ifdef RESPAWN_STARS
-        if (stars[i].x < 0 || stars[i].x > global_back_buffer.width
-            || stars[i].y < 0 || stars[i].y > global_back_buffer.height)
-        {
-            stars[i].x = rand() % global_back_buffer.width;
-            stars[i].y = rand() % global_back_buffer.height;
-            stars[i].angle = 0;
-            stars[i].speed = 0;
-        }
-#endif
-    }
-}
-
-
-void draw_grid(struct SDLOffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
-{
-    if (node && node->ne && node->nw && node->sw && node->se)
-    {
-        for (int x = (node->cell->center_x - node->cell->distance_x);
-            x <= (node->cell->center_x + node->cell->distance_x);
-            ++x)
-        {
-            set_pixel(buffer, x, node->cell->center_y, color);
-        }
-
-        for (int y = (node->cell->center_y - node->cell->distance_y);
-            y <= (node->cell->center_y + node->cell->distance_y);
-            ++y)
-        {
-            set_pixel(buffer, node->cell->center_x, y, color);
-        }
-
-        draw_grid(buffer, node->ne, color);
-        draw_grid(buffer, node->nw, color);
-        draw_grid(buffer, node->sw, color);
-        draw_grid(buffer, node->se, color);
-    }
-}
-
-
-void render(struct SDLOffscreenBuffer *buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt)
-{
-    //printf("%f\n", dt);
-    if (BRUTE_FORCE)
-    {
-        for (int i = 0; i < num_stars; ++i)
-        {
-            set_pixel(
-                buffer,
-                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
-                COLOR_CYAN);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < num_stars; ++i)
-        {
-            set_pixel(
-                buffer,
-                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
-                stars[i].color);
-        }
-    }
-
-    if (RENDER_GRID)
-    {
-        draw_grid(buffer, qt->root, COLOR_GREEN);
-    }
-}
-
-
 int main(void)
 {
     if (SDL_Init(SDL_INIT_VIDEO))
@@ -407,6 +221,12 @@ int main(void)
                 SDL_PumpEvents();
 
                 dimension = sdl_get_window_dimension(window);
+                struct OffscreenBuffer buffer;
+                // these pointers are now aliased
+                buffer.memory = global_back_buffer.memory;
+                buffer.width = global_back_buffer.width;
+                buffer.height = global_back_buffer.height;
+                buffer.pitch = global_back_buffer.pitch;
 
                 if (PAUSED)
                 {
@@ -416,7 +236,7 @@ int main(void)
                 {
                     while (lag >= MS_PER_UPDATE)
                     {
-                        update(stars, NUM_STARS, qt);
+                        update(buffer.width, buffer.height, stars, NUM_STARS, qt);
                         //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                         lag -= MS_PER_UPDATE;
                     }
@@ -426,7 +246,8 @@ int main(void)
                 {
                     clear_screen(&global_back_buffer, COLOR_BACKGROUND);
                 }
-                render(&global_back_buffer, lag/SECOND, stars, NUM_STARS, qt);
+
+                render(&buffer, lag/SECOND, stars, NUM_STARS, qt);
                 sdl_update_window(renderer, &global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
