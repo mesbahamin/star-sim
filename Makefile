@@ -7,7 +7,7 @@ SDL_LDFLAGS := $(shell sdl2-config --libs)
 
 override CFLAGS += $(SDL_CFLAGS)
 
-SRC = main.c
+SRC = main.c star.c barnes_hut.c
 EXE = star-garden
 
 DBGDIR = debug
@@ -23,7 +23,7 @@ RELCFLAGS = -O2 -Os
 all: debug release
 
 clean:
-	rm -f $(RELEXE) $(DBGEXE)
+	rm -f $(RELDIR)/* $(DBGDIR)/*
 
 debug: prep
 	$(CC) $(CFLAGS) $(DBGCFLAGS) $(SRC) -o $(DBGEXE) $(LDFLAGS)
