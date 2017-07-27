@@ -7,7 +7,8 @@ SDL_LDFLAGS := $(shell sdl2-config --libs)
 
 override CFLAGS += $(SDL_CFLAGS)
 
-SRC = platform_sdl.c star_garden.c star.c barnes_hut.c
+SRC_FILES = platform_sdl.c star_garden.c star.c barnes_hut.c
+SRC = $(addprefix src/, $(SRC_FILES))
 EXE = star-garden
 
 DBGDIR = debug
@@ -44,7 +45,7 @@ run: debug
 	./$(DBGEXE)
 
 todo:
-	@grep -FIR --colour=never --ignore-case --line-number todo *.c *.h \
+	@grep -FIR --colour=never --ignore-case --line-number todo src/ \
 	| sed -re  's/^([^:]+):[[:space:]]*(.*)/\1\x01\2/' \
 	| sed -re  's/^([^:]+):[[:space:]]*(.*)/\1\x01\2/' \
 	| column -s $$'\x01' -t
