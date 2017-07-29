@@ -18,7 +18,7 @@ RELDIR = release
 RELEXE = $(RELDIR)/$(EXE)
 RELCFLAGS = -O2 -Os
 
-.PHONY: all clean debug memcheck prep profile release run
+.PHONY: all clean debug memcheck prep profile release run todo
 
 all: debug release
 
@@ -42,3 +42,9 @@ release: prep
 
 run: debug
 	./$(DBGEXE)
+
+todo:
+	@grep -FIR --colour=never --ignore-case --line-number todo *.c *.h \
+	| sed -re  's/^([^:]+):[[:space:]]*(.*)/\1\x01\2/' \
+	| sed -re  's/^([^:]+):[[:space:]]*(.*)/\1\x01\2/' \
+	| column -s $$'\x01' -t
