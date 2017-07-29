@@ -56,6 +56,12 @@ typedef enum color_t
     NUM_COLORS,
 } color_t;
 
+struct SimState
+{
+    struct Star stars[NUM_STARS];
+    struct QuadTree *qt;
+    int num_stars;
+};
 
 struct OffscreenBuffer
 {
@@ -66,10 +72,12 @@ struct OffscreenBuffer
     unsigned int pitch;
 };
 
-void update(int buffer_width, int buffer_height, struct Star stars[], int num_stars, struct QuadTree *qt);
-void render(struct OffscreenBuffer *buffer, float dt, struct Star stars[], int num_stars, struct QuadTree *qt);
-void set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32_t color);
-void draw_grid(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color);
+void sim_init(struct SimState *sim_state, int field_width, int field_height);
+void sim_update(struct SimState *sim_state, int field_width, int field_height);
+void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_state);
+void sim_set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32_t color);
+void sim_render_grid(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color);
+void sim_cleanup(struct SimState *sim_state);
 
 #define STAR_GARDEN_H
 #endif

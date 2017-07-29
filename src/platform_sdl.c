@@ -188,20 +188,9 @@ int main(void)
 
             uint64_t lag = 0;
             uint64_t previous_ms = (SDL_GetPerformanceCounter() * SECOND) / SDL_GetPerformanceFrequency();
-            struct Star stars[NUM_STARS];
-            for (int i = 0; i < NUM_STARS; ++i)
-            {
-                stars[i].x = rand() % dimension.width;
-                stars[i].y = rand() % dimension.height;
-                stars[i].angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
-                stars[i].speed = 0;
-                stars[i].mass = 5;
-                stars[i].size = star_calc_size(stars[i].mass);
-                stars[i].color = COLOR_WHITE;
-                //printf("%f, %f, %f\n", stars[i].angle, stars[i].speed, stars[i].mass);
-            }
 
-            struct QuadTree *qt = quad_tree_init();
+            struct SimState sim_state;
+            sim_init(&sim_state, dimension.width, dimension.height);
 
             while (running)
             {
@@ -222,7 +211,8 @@ int main(void)
 
                 dimension = sdl_get_window_dimension(window);
                 struct OffscreenBuffer buffer;
-                // these pointers are now aliased
+                // WARNING: these pointers are aliased until the end of the
+                // loop
                 buffer.memory = global_back_buffer.memory;
                 buffer.width = global_back_buffer.width;
                 buffer.height = global_back_buffer.height;
@@ -236,7 +226,7 @@ int main(void)
                 {
                     while (lag >= MS_PER_UPDATE)
                     {
-                        update(buffer.width, buffer.height, stars, NUM_STARS, qt);
+                        sim_update(&sim_state, buffer.width, buffer.height);
                         //printf("\t%" PRIu64 ", %f\n", lag, MS_PER_UPDATE);
                         lag -= MS_PER_UPDATE;
                     }
@@ -247,7 +237,7 @@ int main(void)
                     clear_screen(&global_back_buffer, COLOR_BACKGROUND);
                 }
 
-                render(&buffer, lag/SECOND, stars, NUM_STARS, qt);
+                sim_render(&buffer, lag/SECOND, &sim_state);
                 sdl_update_window(renderer, &global_back_buffer);
                 if (elapsed_ms <= MS_PER_FRAME)
                 {
@@ -255,7 +245,7 @@ int main(void)
                 }
             }
 
-            quad_tree_free(qt);
+            sim_cleanup(&sim_state);
         }
         else
         {
