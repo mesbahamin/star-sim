@@ -1,5 +1,10 @@
 #include "barnes_hut.h"
 
+#include "star.h"
+
+#include "math.h"
+#include "stdlib.h"
+
 
 struct Cell *cell_init(float center_x, float center_y, float distance_x, float distance_y)
 {

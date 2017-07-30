@@ -1,5 +1,7 @@
 #include "star_garden.h"
 
+#include <stdbool.h>
+
 bool PAUSED = false;
 bool BRUTE_FORCE = false;
 bool RENDER_GRID = false;

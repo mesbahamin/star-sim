@@ -6,13 +6,13 @@
 #define BARNES_HUT_H
 
 #include <stdbool.h>
-// TODO: Remove this.
-#include "star.h"
 
 // TODO: Limit tree depth
 #ifndef THETA
 #define THETA 0.5f
 #endif
+
+struct Star;
 
 struct Cell
 {

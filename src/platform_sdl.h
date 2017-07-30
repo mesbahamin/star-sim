@@ -1,6 +1,6 @@
 #ifndef PLATFORM_SDL_H
 
-#include <SDL.h>
+#include "SDL.h"
 
 struct SDLOffscreenBuffer
 {

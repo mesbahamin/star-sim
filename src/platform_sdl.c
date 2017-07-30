@@ -1,23 +1,11 @@
+#include "platform_sdl.h"
+
 #include "star_garden.h"
 
-#include <inttypes.h>
-#include <math.h>
-#include <SDL.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include "platform_sdl.h"
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
-#endif
-
-#ifndef M_PI
-#define M_PI (3.14159265358979323846264338327950288)
 #endif
 
 extern bool PAUSED;

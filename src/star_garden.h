@@ -1,17 +1,11 @@
 #ifndef STAR_GARDEN_H
 
-#include <inttypes.h>
+#include "barnes_hut.h"
+#include "star.h"
+
 #include <math.h>
-#include <SDL.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include "star.h"
-#include "barnes_hut.h"
 
 #define FULLSCREEN
 #define RESPAWN_STARS
@@ -29,6 +23,10 @@
 #define MS_PER_FRAME (SECOND / FPS)
 #define UPDATES_PER_SECOND 120
 #define MS_PER_UPDATE (SECOND / UPDATES_PER_SECOND)
+
+#ifndef M_PI
+#define M_PI (3.14159265358979323846264338327950288)
+#endif
 
 #define COLOR_WHITE      0xFFFFFF
 #define COLOR_BLACK      0x000000

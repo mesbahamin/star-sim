@@ -1,5 +1,9 @@
 #include "star.h"
 
+#include <math.h>
+#include <stdlib.h>
+
+
 // TODO: Test whether making this function return a struct (rather than a
 // struct pointer) makes a significant performance difference.
 struct Vec2d *vec2d_add(float angle1, float length1, float angle2, float length2)
@@ -13,6 +17,7 @@ struct Vec2d *vec2d_add(float angle1, float length1, float angle2, float length2
     return new_vec;
 }
 
+
 void star_accelerate(struct Star *s, float angle, float acceleration)
 {
     struct Vec2d *new_vec = vec2d_add(s->angle, s->speed, angle, acceleration);
@@ -21,10 +26,12 @@ void star_accelerate(struct Star *s, float angle, float acceleration)
     free(new_vec);
 }
 
+
 float star_calc_size(float mass)
 {
     return 0.5 * (powf(mass, 0.5));
 }
+
 
 void star_attract(struct Star *s1, struct Star *s2)
 {
@@ -41,6 +48,7 @@ void star_attract(struct Star *s1, struct Star *s2)
         //printf("%f\n", force);
     }
 }
+
 
 void star_attract_to_mass(struct Star *star, float mass, float mass_x, float mass_y)
 {
