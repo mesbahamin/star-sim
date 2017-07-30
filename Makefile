@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Wshadow
+CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Wno-unused-parameter
 LDFLAGS = $(SDL_LDFLAGS) -lm
 
 SDL_CFLAGS := $(shell sdl2-config --cflags)

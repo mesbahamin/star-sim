@@ -3,6 +3,7 @@
 #include "star_garden.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -138,7 +139,7 @@ bool handle_event(SDL_Event *event)
 }
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
     if (SDL_Init(SDL_INIT_VIDEO))
     {

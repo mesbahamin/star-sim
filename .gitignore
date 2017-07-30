@@ -4,3 +4,9 @@ release/*
 *.out
 *.png
 *.swp
+
+# visual studio files
+.vs/*
+packages/*
+x64/*
+*.vcxproj.filters
