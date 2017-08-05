@@ -62,10 +62,17 @@ struct SimBounds
     float side_length_y;
 };
 
+struct SimView
+{
+    float dx;
+    float dy;
+};
+
 struct SimState
 {
     int num_stars;
     struct SimBounds bounding_box;
+    struct SimView view;
     struct QuadTree *qt;
     struct Star stars[NUM_STARS];
 };
@@ -84,8 +91,8 @@ void sim_update(struct SimState *sim_state, int field_width, int field_height);
 void sim_bounding_box_update(struct SimBounds *bounds, float min_x, float min_y, float max_x, float max_y);
 void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_state);
 void sim_set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint32_t color);
-void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color);
-void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color);
+void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color, float dx, float dy);
+void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color, float dx, float dy);
 void sim_cleanup(struct SimState *sim_state);
 
 #define STAR_GARDEN_H

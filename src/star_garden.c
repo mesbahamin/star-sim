@@ -18,10 +18,14 @@ void sim_init(struct SimState *sim_state, int field_width, int field_height)
     }
 
     sim_state->num_stars = NUM_STARS;
+
     sim_state->bounding_box.center_x = field_width / 2;
     sim_state->bounding_box.center_y = field_height / 2;
     sim_state->bounding_box.side_length_x = 0;
     sim_state->bounding_box.side_length_y = 0;
+
+    sim_state->view.dx = 0;
+    sim_state->view.dy = 0;
 
     float min_x = field_width / 2;
     float max_x = field_width / 2;
@@ -177,6 +181,8 @@ void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_s
         return;
     }
 
+    float dx = sim_state->view.dx;
+    float dy = sim_state->view.dy;
     int num_stars = sim_state->num_stars;
     struct Star *stars = sim_state->stars;
     struct QuadTree *qt = sim_state->qt;
@@ -187,8 +193,8 @@ void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_s
         {
             sim_set_pixel(
                 buffer,
-                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
+                (stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt) + dx,
+                (stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt) + dy,
                 COLOR_CYAN);
         }
     }
@@ -198,19 +204,19 @@ void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_s
         {
             sim_set_pixel(
                 buffer,
-                stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt,
-                stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt,
+                (stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt) + dx,
+                (stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt) + dy,
                 stars[i].color);
         }
     }
 
     if (RENDER_GRID)
     {
-        sim_grid_render(buffer, qt->root, COLOR_GREEN);
+        sim_grid_render(buffer, qt->root, COLOR_GREEN, dx, dy);
     }
     if (RENDER_BOUNDING_BOX)
     {
-        sim_bounding_box_render(buffer, &sim_state->bounding_box, COLOR_RED);
+        sim_bounding_box_render(buffer, &sim_state->bounding_box, COLOR_RED, dx, dy);
     }
 }
 
@@ -237,7 +243,7 @@ void sim_set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint3
 }
 
 
-void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
+void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color, float dx, float dy)
 {
     if (!buffer)
     {
@@ -251,25 +257,25 @@ void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, 
             x <= (node->cell->center_x + node->cell->distance_x);
             ++x)
         {
-            sim_set_pixel(buffer, x, node->cell->center_y, color);
+            sim_set_pixel(buffer, x + dx, node->cell->center_y + dy, color);
         }
 
         for (int y = (node->cell->center_y - node->cell->distance_y);
             y <= (node->cell->center_y + node->cell->distance_y);
             ++y)
         {
-            sim_set_pixel(buffer, node->cell->center_x, y, color);
+            sim_set_pixel(buffer, node->cell->center_x + dx, y + dy, color);
         }
 
-        sim_grid_render(buffer, node->ne, color);
-        sim_grid_render(buffer, node->nw, color);
-        sim_grid_render(buffer, node->sw, color);
-        sim_grid_render(buffer, node->se, color);
+        sim_grid_render(buffer, node->ne, color, dx, dy);
+        sim_grid_render(buffer, node->nw, color, dx, dy);
+        sim_grid_render(buffer, node->sw, color, dx, dy);
+        sim_grid_render(buffer, node->se, color, dx, dy);
     }
 }
 
 
-void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color)
+void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color, float dx, float dy)
 {
     if (!buffer)
     {
@@ -284,13 +290,20 @@ void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *b
             x <= bounding_box->center_x + reticle_radius;
             x++)
         {
-            sim_set_pixel(buffer, x, bounding_box->center_y, color);
+            sim_set_pixel(
+                    buffer, x + dx,
+                    bounding_box->center_y + dy,
+                    color);
         }
         for (int y = bounding_box->center_y - reticle_radius;
             y <= bounding_box->center_y + reticle_radius;
             y++)
         {
-            sim_set_pixel(buffer, bounding_box->center_x, y, color);
+            sim_set_pixel(
+                    buffer,
+                    bounding_box->center_x + dx,
+                    y + dy,
+                    color);
         }
 
         float half_length_x = bounding_box->side_length_x / 2;
@@ -300,16 +313,32 @@ void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *b
             x <= (bounding_box->center_x + half_length_x);
             ++x)
         {
-            sim_set_pixel(buffer, x, bounding_box->center_y - half_length_y, color);
-            sim_set_pixel(buffer, x, bounding_box->center_y + half_length_y, color);
+            sim_set_pixel(
+                    buffer,
+                    x + dx,
+                    bounding_box->center_y - half_length_y + dy,
+                    color);
+            sim_set_pixel(
+                    buffer,
+                    x + dx,
+                    bounding_box->center_y + half_length_y + dy,
+                    color);
         }
 
         for (int y = (bounding_box->center_y - half_length_y);
             y <= (bounding_box->center_y + half_length_y);
             ++y)
         {
-            sim_set_pixel(buffer, bounding_box->center_x - half_length_x, y, color);
-            sim_set_pixel(buffer, bounding_box->center_x + half_length_x, y, color);
+            sim_set_pixel(
+                    buffer,
+                    bounding_box->center_x - half_length_x + dx,
+                    y + dy,
+                    color);
+            sim_set_pixel(
+                    buffer,
+                    bounding_box->center_x + half_length_x + dx,
+                    y + dy,
+                    color);
         }
     }
 }

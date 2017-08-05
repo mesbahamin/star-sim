@@ -10,6 +10,9 @@ efficiently calculate the forces acting on each star.
 
 ### Keyboard Shortcuts
 
+- `WASD`: Pan.
+- `Arrow Keys`: Slow Pan.
+- `Home`: Center View.
 - `b`: Toggle bounding box rendering.
 - `f`: Toggle brute-force mode. Stars turn blue when this mode is active, and
   gravitational attraction is calculated for every single pair of stars. The

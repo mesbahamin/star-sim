@@ -204,6 +204,47 @@ int main(int argc, char *argv[])
                 SDL_PumpEvents();
 
                 dimension = sdl_get_window_dimension(window);
+
+                const uint8_t *keystate = SDL_GetKeyboardState(0);
+
+                if (keystate[SDL_SCANCODE_A])
+                {
+                    sim_state.view.dx += 5;
+                }
+                if (keystate[SDL_SCANCODE_D])
+                {
+                    sim_state.view.dx -= 5;
+                }
+                if (keystate[SDL_SCANCODE_W])
+                {
+                    sim_state.view.dy += 5;
+                }
+                if (keystate[SDL_SCANCODE_S])
+                {
+                    sim_state.view.dy -= 5;
+                }
+                if (keystate[SDL_SCANCODE_LEFT])
+                {
+                    sim_state.view.dx++;
+                }
+                if (keystate[SDL_SCANCODE_RIGHT])
+                {
+                    sim_state.view.dx--;
+                }
+                if (keystate[SDL_SCANCODE_UP])
+                {
+                    sim_state.view.dy++;
+                }
+                if (keystate[SDL_SCANCODE_DOWN])
+                {
+                    sim_state.view.dy--;
+                }
+                if (keystate[SDL_SCANCODE_HOME])
+                {
+                    sim_state.view.dx = 0;
+                    sim_state.view.dy = 0;
+                }
+
                 struct OffscreenBuffer buffer;
                 // WARNING: these pointers are aliased until the end of the
                 // loop
