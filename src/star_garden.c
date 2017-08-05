@@ -26,6 +26,7 @@ void sim_init(struct SimState *sim_state, int field_width, int field_height)
 
     sim_state->view.dx = 0;
     sim_state->view.dy = 0;
+    sim_state->view.zoom = 1;
 
     float min_x = field_width / 2;
     float max_x = field_width / 2;
@@ -181,43 +182,156 @@ void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_s
         return;
     }
 
-    float dx = sim_state->view.dx;
-    float dy = sim_state->view.dy;
     int num_stars = sim_state->num_stars;
     struct Star *stars = sim_state->stars;
     struct QuadTree *qt = sim_state->qt;
-    //printf("%f\n", dt);
-    if (BRUTE_FORCE)
+
+    float dx = sim_state->view.dx;
+    float dy = sim_state->view.dy;
+    float zoom = sim_state->view.zoom;
+
+    for (int i = 0; i < num_stars; ++i)
     {
-        for (int i = 0; i < num_stars; ++i)
+        uint32_t color;
+        if (BRUTE_FORCE)
         {
-            sim_set_pixel(
-                buffer,
-                (stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt) + dx,
-                (stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt) + dy,
-                COLOR_CYAN);
+            color = COLOR_CYAN;
         }
-    }
-    else
-    {
-        for (int i = 0; i < num_stars; ++i)
+        else
         {
-            sim_set_pixel(
-                buffer,
-                (stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt) + dx,
-                (stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt) + dy,
-                stars[i].color);
+            color = stars[i].color;
         }
+        sim_set_pixel(
+            buffer,
+            sim_calc_render_offset(zoom, dx, stars[i].x + (sinf(stars[i].angle) * stars[i].speed) * dt, buffer->width/2),
+            sim_calc_render_offset(zoom, dy, stars[i].y - (cosf(stars[i].angle) * stars[i].speed) * dt, buffer->height/2),
+            color);
     }
 
     if (RENDER_GRID)
     {
-        sim_grid_render(buffer, qt->root, COLOR_GREEN, dx, dy);
+        sim_grid_render(buffer, qt->root, COLOR_GREEN, &sim_state->view);
     }
     if (RENDER_BOUNDING_BOX)
     {
-        sim_bounding_box_render(buffer, &sim_state->bounding_box, COLOR_RED, dx, dy);
+        sim_bounding_box_render(buffer, &sim_state->bounding_box, COLOR_RED, &sim_state->view);
     }
+}
+
+
+void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color, struct SimView *view)
+{
+    if (!buffer)
+    {
+        // TODO: handle invalid pointer error
+        return;
+    }
+
+    if (node && node->ne && node->nw && node->sw && node->se)
+    {
+        for (int x = (node->cell->center_x - node->cell->distance_x);
+            x <= (node->cell->center_x + node->cell->distance_x);
+            ++x)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, node->cell->center_y, buffer->height/2),
+                    color);
+        }
+
+        for (int y = (node->cell->center_y - node->cell->distance_y);
+            y <= (node->cell->center_y + node->cell->distance_y);
+            ++y)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, node->cell->center_x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, y, buffer->height/2),
+                    color);
+        }
+
+        sim_grid_render(buffer, node->ne, color, view);
+        sim_grid_render(buffer, node->nw, color, view);
+        sim_grid_render(buffer, node->sw, color, view);
+        sim_grid_render(buffer, node->se, color, view);
+    }
+}
+
+
+void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color, struct SimView *view)
+{
+    if (!buffer)
+    {
+        // TODO: handle invalid pointer error
+        return;
+    }
+
+    if (bounding_box)
+    {
+        int reticle_radius = 3;
+        for (int x = bounding_box->center_x - reticle_radius;
+            x <= bounding_box->center_x + reticle_radius;
+            x++)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, bounding_box->center_y, buffer->height/2),
+                    color);
+        }
+        for (int y = bounding_box->center_y - reticle_radius;
+            y <= bounding_box->center_y + reticle_radius;
+            y++)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, bounding_box->center_x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, y, buffer->height/2),
+                    color);
+        }
+
+        float half_length_x = bounding_box->side_length_x / 2;
+        float half_length_y = bounding_box->side_length_y / 2;
+
+        for (int x = (bounding_box->center_x - half_length_x);
+            x <= (bounding_box->center_x + half_length_x);
+            ++x)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, bounding_box->center_y - half_length_y, buffer->height/2),
+                    color);
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, bounding_box->center_y + half_length_y, buffer->height/2),
+                    color);
+        }
+
+        for (int y = (bounding_box->center_y - half_length_y);
+            y <= (bounding_box->center_y + half_length_y);
+            ++y)
+        {
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, bounding_box->center_x - half_length_x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, y, buffer->height/2),
+                    color);
+            sim_set_pixel(
+                    buffer,
+                    sim_calc_render_offset(view->zoom, view->dx, bounding_box->center_x + half_length_x, buffer->width/2),
+                    sim_calc_render_offset(view->zoom, view->dy, y, buffer->height/2),
+                    color);
+        }
+    }
+}
+
+
+float sim_calc_render_offset(float zoom, float delta, float pos, float center)
+{
+    return ((1 - zoom) * center) + (pos + delta) * zoom;
 }
 
 
@@ -239,107 +353,6 @@ void sim_set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint3
         pixel_pos += ((BYTES_PER_PIXEL*x) + (buffer->pitch * y));
         uint32_t *pixel = (uint32_t *)pixel_pos;
         *pixel = color;
-    }
-}
-
-
-void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color, float dx, float dy)
-{
-    if (!buffer)
-    {
-        // TODO: handle invalid pointer error
-        return;
-    }
-
-    if (node && node->ne && node->nw && node->sw && node->se)
-    {
-        for (int x = (node->cell->center_x - node->cell->distance_x);
-            x <= (node->cell->center_x + node->cell->distance_x);
-            ++x)
-        {
-            sim_set_pixel(buffer, x + dx, node->cell->center_y + dy, color);
-        }
-
-        for (int y = (node->cell->center_y - node->cell->distance_y);
-            y <= (node->cell->center_y + node->cell->distance_y);
-            ++y)
-        {
-            sim_set_pixel(buffer, node->cell->center_x + dx, y + dy, color);
-        }
-
-        sim_grid_render(buffer, node->ne, color, dx, dy);
-        sim_grid_render(buffer, node->nw, color, dx, dy);
-        sim_grid_render(buffer, node->sw, color, dx, dy);
-        sim_grid_render(buffer, node->se, color, dx, dy);
-    }
-}
-
-
-void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color, float dx, float dy)
-{
-    if (!buffer)
-    {
-        // TODO: handle invalid pointer error
-        return;
-    }
-
-    if (bounding_box)
-    {
-        int reticle_radius = 3;
-        for (int x = bounding_box->center_x - reticle_radius;
-            x <= bounding_box->center_x + reticle_radius;
-            x++)
-        {
-            sim_set_pixel(
-                    buffer, x + dx,
-                    bounding_box->center_y + dy,
-                    color);
-        }
-        for (int y = bounding_box->center_y - reticle_radius;
-            y <= bounding_box->center_y + reticle_radius;
-            y++)
-        {
-            sim_set_pixel(
-                    buffer,
-                    bounding_box->center_x + dx,
-                    y + dy,
-                    color);
-        }
-
-        float half_length_x = bounding_box->side_length_x / 2;
-        float half_length_y = bounding_box->side_length_y / 2;
-
-        for (int x = (bounding_box->center_x - half_length_x);
-            x <= (bounding_box->center_x + half_length_x);
-            ++x)
-        {
-            sim_set_pixel(
-                    buffer,
-                    x + dx,
-                    bounding_box->center_y - half_length_y + dy,
-                    color);
-            sim_set_pixel(
-                    buffer,
-                    x + dx,
-                    bounding_box->center_y + half_length_y + dy,
-                    color);
-        }
-
-        for (int y = (bounding_box->center_y - half_length_y);
-            y <= (bounding_box->center_y + half_length_y);
-            ++y)
-        {
-            sim_set_pixel(
-                    buffer,
-                    bounding_box->center_x - half_length_x + dx,
-                    y + dy,
-                    color);
-            sim_set_pixel(
-                    buffer,
-                    bounding_box->center_x + half_length_x + dx,
-                    y + dy,
-                    color);
-        }
     }
 }
 

@@ -210,40 +210,53 @@ int main(int argc, char *argv[])
                 // TODO: move this to a function
                 if (keystate[SDL_SCANCODE_A] || keystate[SDL_SCANCODE_H])
                 {
-                    sim_state.view.dx += 5;
+                    sim_state.view.dx += 5 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_D] || keystate[SDL_SCANCODE_L])
                 {
-                    sim_state.view.dx -= 5;
+                    sim_state.view.dx -= 5 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_W] || keystate[SDL_SCANCODE_K])
                 {
-                    sim_state.view.dy += 5;
+                    sim_state.view.dy += 5 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_S] || keystate[SDL_SCANCODE_J])
                 {
-                    sim_state.view.dy -= 5;
+                    sim_state.view.dy -= 5 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_LEFT])
                 {
-                    sim_state.view.dx++;
+                    sim_state.view.dx += 1 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_RIGHT])
                 {
-                    sim_state.view.dx--;
+                    sim_state.view.dx -= 1 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_UP])
                 {
-                    sim_state.view.dy++;
+                    sim_state.view.dy += 1 / sim_state.view.zoom;
                 }
                 if (keystate[SDL_SCANCODE_DOWN])
                 {
-                    sim_state.view.dy--;
+                    sim_state.view.dy -= 1 / sim_state.view.zoom;
+                }
+                if (keystate[SDL_SCANCODE_EQUALS])
+                {
+                    sim_state.view.zoom *= 1.01;
+                }
+                if (keystate[SDL_SCANCODE_MINUS])
+                {
+                    sim_state.view.zoom *= 0.99;
+                }
+                if (keystate[SDL_SCANCODE_0])
+                {
+                    sim_state.view.zoom = 1;
                 }
                 if (keystate[SDL_SCANCODE_HOME])
                 {
                     sim_state.view.dx = 0;
                     sim_state.view.dy = 0;
+                    sim_state.view.zoom = 1;
                 }
 
                 struct OffscreenBuffer buffer;
