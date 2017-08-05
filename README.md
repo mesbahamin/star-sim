@@ -10,7 +10,7 @@ efficiently calculate the forces acting on each star.
 
 ### Keyboard Shortcuts
 
-- `WASD`: Pan.
+- `WASD` or `HJKL`: Pan.
 - `Arrow Keys`: Slow Pan.
 - `Home`: Center View.
 - `b`: Toggle bounding box rendering.

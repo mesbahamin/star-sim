@@ -207,19 +207,20 @@ int main(int argc, char *argv[])
 
                 const uint8_t *keystate = SDL_GetKeyboardState(0);
 
-                if (keystate[SDL_SCANCODE_A])
+                // TODO: move this to a function
+                if (keystate[SDL_SCANCODE_A] || keystate[SDL_SCANCODE_H])
                 {
                     sim_state.view.dx += 5;
                 }
-                if (keystate[SDL_SCANCODE_D])
+                if (keystate[SDL_SCANCODE_D] || keystate[SDL_SCANCODE_L])
                 {
                     sim_state.view.dx -= 5;
                 }
-                if (keystate[SDL_SCANCODE_W])
+                if (keystate[SDL_SCANCODE_W] || keystate[SDL_SCANCODE_K])
                 {
                     sim_state.view.dy += 5;
                 }
-                if (keystate[SDL_SCANCODE_S])
+                if (keystate[SDL_SCANCODE_S] || keystate[SDL_SCANCODE_J])
                 {
                     sim_state.view.dy -= 5;
                 }
