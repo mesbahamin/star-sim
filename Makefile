@@ -7,7 +7,7 @@ SDL_LDFLAGS := $(shell sdl2-config --libs)
 
 override CFLAGS += $(SDL_CFLAGS)
 
-SRC_FILES = platform_sdl.c star_garden.c star.c barnes_hut.c
+SRC_FILES = platform_sdl.c sim.c star.c barnes_hut.c
 SRC = $(addprefix src/, $(SRC_FILES))
 EXE = star-garden
 

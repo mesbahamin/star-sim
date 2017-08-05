@@ -1,6 +1,6 @@
 #include "platform_sdl.h"
 
-#include "star_garden.h"
+#include "sim.h"
 
 #include <stdbool.h>
 #include <stdio.h>
