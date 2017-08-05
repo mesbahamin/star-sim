@@ -5,6 +5,7 @@
 bool PAUSED = false;
 bool BRUTE_FORCE = false;
 bool RENDER_GRID = false;
+bool RENDER_BOUNDING_BOX = false;
 bool RENDER_TRAILS = false;
 
 
@@ -17,19 +18,67 @@ void sim_init(struct SimState *sim_state, int field_width, int field_height)
     }
 
     sim_state->num_stars = NUM_STARS;
+    sim_state->bounding_box.center_x = field_width / 2;
+    sim_state->bounding_box.center_y = field_height / 2;
+    sim_state->bounding_box.side_length_x = 0;
+    sim_state->bounding_box.side_length_y = 0;
+
+    float min_x = field_width / 2;
+    float max_x = field_width / 2;
+    float min_y = field_height / 2;
+    float max_y = field_height / 2;
+
     for (int i = 0; i < sim_state->num_stars; ++i)
     {
+        int star_x = rand() % field_width;
+        int star_y = rand() % field_height;
+
         struct Star *star = &sim_state->stars[i];
-        star->x = rand() % field_width;
-        star->y = rand() % field_height;
+        star->x = star_x;
+        star->y = star_y;
         star->angle = ((float)rand()/(float)(RAND_MAX)) * 2 * M_PI;
         star->speed = 0;
         star->mass = 5;
         star->size = star_calc_size(star->mass);
         star->color = COLOR_WHITE;
         //printf("%f, %f, %f\n", star->angle, star->speed, star->mass);
+
+        if (star_x <= min_x)
+        {
+            min_x = star_x;
+        }
+        else if (star_x >= max_x)
+        {
+            max_x = star_x;
+        }
+        if (star_y <= min_y)
+        {
+            min_y = star_y;
+        }
+        else if (star_y >= max_y)
+        {
+            max_y = star_y;
+        }
     }
+    sim_bounding_box_update(&sim_state->bounding_box, min_x, min_y, max_x, max_y);
+
     sim_state->qt = quad_tree_init();
+}
+
+
+void sim_bounding_box_update(struct SimBounds *bounds, float min_x, float min_y, float max_x, float max_y)
+{
+    if (!bounds)
+    {
+        // TODO: handle invalid pointer error
+        return;
+    }
+
+    float bounding_square_side_length = fmaxf(max_x - min_x, max_y - min_y);
+    bounds->side_length_x = bounding_square_side_length;
+    bounds->side_length_y = bounding_square_side_length;
+    bounds->center_x = (min_x + max_x) / 2;
+    bounds->center_y = (min_y + max_y) / 2;
 }
 
 
@@ -41,16 +90,15 @@ void sim_update(struct SimState *sim_state, int field_width, int field_height)
         return;
     }
 
-    // TODO: either limit the bounds of the simulation, or base these values on
-    // the smallest bounding rectangle
-    int center_x = field_width / 2;
-    int center_y = field_height / 2;
-    int dist_x = field_width / 2;
-    int dist_y = field_height / 2;
+    float min_x = sim_state->bounding_box.center_x;
+    float max_x = sim_state->bounding_box.center_x;
+    float min_y = sim_state->bounding_box.center_y;
+    float max_y = sim_state->bounding_box.center_y;
 
     int num_stars = sim_state->num_stars;
     struct Star *stars = sim_state->stars;
     struct QuadTree *qt = sim_state->qt;
+
 
     if (BRUTE_FORCE)
     {
@@ -65,7 +113,12 @@ void sim_update(struct SimState *sim_state, int field_width, int field_height)
     else
     {
         quad_tree_node_free(qt->root);
-        qt->root = quad_tree_node_init(center_x, center_y, dist_x, dist_y);
+        qt->root = quad_tree_node_init(
+                sim_state->bounding_box.center_x,
+                sim_state->bounding_box.center_y,
+                sim_state->bounding_box.side_length_x / 2,
+                sim_state->bounding_box.side_length_y / 2);
+
         for (int i = 0; i < num_stars; ++i)
         {
             quad_tree_node_insert_star(qt->root, &(stars[i]));
@@ -82,6 +135,7 @@ void sim_update(struct SimState *sim_state, int field_width, int field_height)
         stars[i].x += sinf(stars[i].angle) * stars[i].speed;
         stars[i].y -= cosf(stars[i].angle) * stars[i].speed;
         stars[i].speed *= DRAG;
+
 #ifdef RESPAWN_STARS
         if (stars[i].x < 0 || stars[i].x > field_width
             || stars[i].y < 0 || stars[i].y > field_height)
@@ -92,7 +146,26 @@ void sim_update(struct SimState *sim_state, int field_width, int field_height)
             stars[i].speed = 0;
         }
 #endif
+
+        if (stars[i].x <= min_x)
+        {
+            min_x = stars[i].x;
+        }
+        else if (stars[i].x >= max_x)
+        {
+            max_x = stars[i].x;
+        }
+        if (stars[i].y <= min_y)
+        {
+            min_y = stars[i].y;
+        }
+        else if (stars[i].y >= max_y)
+        {
+            max_y = stars[i].y;
+        }
     }
+
+    sim_bounding_box_update(&sim_state->bounding_box, min_x, min_y, max_x, max_y);
 }
 
 
@@ -133,7 +206,11 @@ void sim_render(struct OffscreenBuffer *buffer, float dt, struct SimState *sim_s
 
     if (RENDER_GRID)
     {
-        sim_render_grid(buffer, qt->root, COLOR_GREEN);
+        sim_grid_render(buffer, qt->root, COLOR_GREEN);
+    }
+    if (RENDER_BOUNDING_BOX)
+    {
+        sim_bounding_box_render(buffer, &sim_state->bounding_box, COLOR_RED);
     }
 }
 
@@ -160,7 +237,7 @@ void sim_set_pixel(struct OffscreenBuffer *buffer, uint32_t x, uint32_t y, uint3
 }
 
 
-void sim_render_grid(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
+void sim_grid_render(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, uint32_t color)
 {
     if (!buffer)
     {
@@ -184,10 +261,56 @@ void sim_render_grid(struct OffscreenBuffer *buffer, struct QuadTreeNode *node, 
             sim_set_pixel(buffer, node->cell->center_x, y, color);
         }
 
-        sim_render_grid(buffer, node->ne, color);
-        sim_render_grid(buffer, node->nw, color);
-        sim_render_grid(buffer, node->sw, color);
-        sim_render_grid(buffer, node->se, color);
+        sim_grid_render(buffer, node->ne, color);
+        sim_grid_render(buffer, node->nw, color);
+        sim_grid_render(buffer, node->sw, color);
+        sim_grid_render(buffer, node->se, color);
+    }
+}
+
+
+void sim_bounding_box_render(struct OffscreenBuffer *buffer, struct SimBounds *bounding_box, uint32_t color)
+{
+    if (!buffer)
+    {
+        // TODO: handle invalid pointer error
+        return;
+    }
+
+    if (bounding_box)
+    {
+        int reticle_radius = 3;
+        for (int x = bounding_box->center_x - reticle_radius;
+            x <= bounding_box->center_x + reticle_radius;
+            x++)
+        {
+            sim_set_pixel(buffer, x, bounding_box->center_y, color);
+        }
+        for (int y = bounding_box->center_y - reticle_radius;
+            y <= bounding_box->center_y + reticle_radius;
+            y++)
+        {
+            sim_set_pixel(buffer, bounding_box->center_x, y, color);
+        }
+
+        float half_length_x = bounding_box->side_length_x / 2;
+        float half_length_y = bounding_box->side_length_y / 2;
+
+        for (int x = (bounding_box->center_x - half_length_x);
+            x <= (bounding_box->center_x + half_length_x);
+            ++x)
+        {
+            sim_set_pixel(buffer, x, bounding_box->center_y - half_length_y, color);
+            sim_set_pixel(buffer, x, bounding_box->center_y + half_length_y, color);
+        }
+
+        for (int y = (bounding_box->center_y - half_length_y);
+            y <= (bounding_box->center_y + half_length_y);
+            ++y)
+        {
+            sim_set_pixel(buffer, bounding_box->center_x - half_length_x, y, color);
+            sim_set_pixel(buffer, bounding_box->center_x + half_length_x, y, color);
+        }
     }
 }
 

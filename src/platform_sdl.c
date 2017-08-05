@@ -12,6 +12,7 @@
 extern bool PAUSED;
 extern bool BRUTE_FORCE;
 extern bool RENDER_GRID;
+extern bool RENDER_BOUNDING_BOX;
 extern bool RENDER_TRAILS;
 
 static struct SDLOffscreenBuffer global_back_buffer;
@@ -91,6 +92,10 @@ bool handle_event(SDL_Event *event)
             if (is_down)
             {
                 if (key_code == SDLK_b)
+                {
+                    RENDER_BOUNDING_BOX = !RENDER_BOUNDING_BOX;
+                }
+                if (key_code == SDLK_f)
                 {
                     BRUTE_FORCE = !BRUTE_FORCE;
                 }

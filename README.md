@@ -10,7 +10,8 @@ efficiently calculate the forces acting on each star.
 
 ### Keyboard Shortcuts
 
-- `b`: Toggle brute-force mode. Stars turn blue when this mode is active, and
+- `b`: Toggle bounding box rendering.
+- `f`: Toggle brute-force mode. Stars turn blue when this mode is active, and
   gravitational attraction is calculated for every single pair of stars. The
   Barnes-Hut grid is not updated.
 - `g`: Toggle Barnes-Hut grid rendering.
