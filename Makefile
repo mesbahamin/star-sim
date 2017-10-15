@@ -13,35 +13,35 @@ EXE = star-garden
 
 DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
-DBGCFLAGS = -g -Og -Werror -pg
+DBGCFLAGS = -g -Og -Werror
 
 RELDIR = release
 RELEXE = $(RELDIR)/$(EXE)
 RELCFLAGS = -O2 -Os
 
-.PHONY: all clean debug memcheck prep profile release run todo
+.PHONY: all clean compile_debug compile_release debug memcheck prep run todo
 
-all: debug release
+all: compile_debug compile_release
 
 clean:
 	rm -f $(RELDIR)/* $(DBGDIR)/*
 
-debug: prep
+compile_debug: prep
 	$(CC) $(CFLAGS) $(DBGCFLAGS) $(SRC) -o $(DBGEXE) $(LDFLAGS)
 
-memcheck: debug
+compile_release: prep
+	$(CC) $(CFLAGS) $(RELCFLAGS) $(SRC) -o $(RELEXE) $(LDFLAGS)
+
+debug: compile_debug
+	gdb $(DBGEXE)
+
+memcheck: compile_debug
 	valgrind --track-origins=yes ./$(DBGEXE)
 
 prep:
 	@mkdir -p $(DBGDIR) $(RELDIR)
 
-profile: run
-	gprof $(DBGEXE) gmon.out > profile_output
-
-release: prep
-	$(CC) $(CFLAGS) $(RELCFLAGS) $(SRC) -o $(RELEXE) $(LDFLAGS)
-
-run: debug
+run: compile_release
 	./$(DBGEXE)
 
 todo:
